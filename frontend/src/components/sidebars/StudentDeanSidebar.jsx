@@ -8,10 +8,8 @@ const StudentDeanSidebar = ({ onLogout }) => {
   const userProfile = {
     name: 'Dr. Sarah Johnson',
     role: 'Student Dean',
-    email: 's.johnson@mtu.edu',
-    avatar: 'SJ',
+    avatar: '/src/assets/images/image.png', // Fixed the path
     department: 'Student Affairs',
-    lastLogin: 'Today at 09:30 AM'
   };
 
   const menuItems = [
@@ -25,8 +23,6 @@ const StudentDeanSidebar = ({ onLogout }) => {
 
   const isActive = (path) => location.pathname === path;
 
-
-  
   return (
     <div className="w-80 bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 text-white min-h-screen flex flex-col shadow-2xl relative overflow-hidden">
       {/* Background Pattern */}
@@ -35,10 +31,23 @@ const StudentDeanSidebar = ({ onLogout }) => {
       {/* Header with Personal Details */}
       <div className="p-6 border-b border-white/10 relative z-10">
         <div className="flex items-center space-x-4 mb-4">
-
-          <div className="relative mr-4   ">
-            <div className=" w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg border-2 border-white/20">
-              <span className="text-xl font-bold text-white">{userProfile.avatar}</span>
+          <div className="relative mr-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg border-2 border-white/20 overflow-hidden">
+              {/* Avatar Image with fallback */}
+              <img 
+                src={userProfile.avatar} 
+                alt="User avatar" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              {/* Fallback initial */}
+              <div className="w-full h-full hidden items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500">
+                <span className="text-xl font-bold text-white">SJ</span>
+              </div>
             </div>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 border-2 border-slate-900 rounded-full"></div>
           </div>
@@ -61,7 +70,7 @@ const StudentDeanSidebar = ({ onLogout }) => {
               <li key={item.path} className="list-none">
                 <Link
                   to={item.path}
-                  className={`flex items-center justify-between p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+                  className={`flex items-center justify-between p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden no-underline hover:no-underline focus:no-underline ${
                     isActive(item.path)
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
                       : 'text-purple-100 hover:bg-white/10 hover:text-white hover:shadow-lg border border-transparent hover:border-white/10'
