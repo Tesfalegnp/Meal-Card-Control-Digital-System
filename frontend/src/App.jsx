@@ -1,41 +1,66 @@
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
-import Home from "./pages/Home";
-import Register from "./pages/Register";
-import Students from "./pages/Students";
-import Verify from "./pages/Verify";
-import DailyStatus from "./pages/DailyStatus";
-import StudentView from "./pages/StudentView";
-import Settings from "./pages/Settings";
-import DenyManagement from './pages/DenyManagement.jsx';
-import UpdateStudent from "./pages/UpdateStudent.jsx";
-import QrPrint from "./pages/QrPrint.jsx";
-
-
+// src/App.jsx
+import React, { useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/Login";
+import StudentDeanDashboard from "./pages/dashboards/StudentDeanDashboard";
+import CafeManagerDashboard from "./pages/dashboards/CafeManagerDashboard";
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const handleLogin = (profile) => {
+    setCurrentUser(profile);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  };
+
   return (
     <BrowserRouter>
-      <Header />
-      <main className="p-4">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/students" element={<Students />} />
-          <Route path="/verify" element={<Verify />} />
-          <Route path="/daily-status" element={<DailyStatus />} />
-          <Route path="/student/:campusId" element={<StudentView />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/deny-management" element={<DenyManagement />} />
-          <Route path="/students" element={<Students />} />
-          <Route path="/update-student/:id" element={<UpdateStudent />} />
-          <Route path="/qr-print/:id" element={<QrPrint />} />
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? (
+              <Navigate to={`/dashboard/${currentUser}`} replace />
+            ) : (
+              <Login onLogin={handleLogin} />
+            )
+          }
+        />
 
-        </Routes>
-      </main> 
-      <Footer />
+        {/* Protected Routes */}
+        <Route
+          path="/dashboard/studentDean"
+          element={
+            isAuthenticated ? (
+              <StudentDeanDashboard onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/dashboard/cafeManager"
+          element={
+            isAuthenticated ? (
+              <CafeManagerDashboard onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        {/* Root path redirect */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
+        {/* Catch all route */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
     </BrowserRouter>
   );
-} 
+}

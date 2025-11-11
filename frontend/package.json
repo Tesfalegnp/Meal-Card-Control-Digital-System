@@ -1,12 +1,12 @@
 {
-  "name": "frontend",
+  "name": "MTU Meal Card System",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint.",
     "preview": "vite preview"
   },
   "dependencies": {
