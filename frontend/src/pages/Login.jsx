@@ -14,8 +14,8 @@ export default function Login({ onLogin }) {
 
   // Mock user data
   const mockUsers = {
-    "dean@mtu.edu.et": { password: "1234", profile: "studentDean" },
-    "cafeManager@mtu.edu.et": { password: "1234", profile: "cafeManager" },
+    "dean@mtu": { password: "1234", profile: "studentDean" },
+    "cafeManager@mtu": { password: "1234", profile: "cafeManager" },
   };
 
   // Handle input changes
