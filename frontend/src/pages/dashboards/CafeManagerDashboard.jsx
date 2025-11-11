@@ -1,3 +1,4 @@
+// src/pages/dashboards/CafeManagerDashboard.jsx
 function CafeManagerDashboard() {
   return (
     <div>

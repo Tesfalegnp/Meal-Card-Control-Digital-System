@@ -24,18 +24,13 @@ export default function Layout({ user, onLogout, children }) {
         <Header onMenuClick={() => setSidebarOpen(true)} user={user} onLogout={onLogout} />
         
         <main className="flex-1 p-4 lg:p-6">
-          {children}
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
         
         <Footer />
       </div>
-
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={handleCloseSidebar}
-        />
-      )}
     </div>
   );
 }
