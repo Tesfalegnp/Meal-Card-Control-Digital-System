@@ -1,6 +1,7 @@
+// src/pages/StudentView.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api } from "../services/api";
+import { supabase } from "../services/supabase_connect";
 import { format, parseISO } from "date-fns";
 
 export default function StudentView() {
@@ -18,26 +19,42 @@ export default function StudentView() {
         setLoading(true);
         setError(null);
         
-        // First try to fetch the specific student directly
-        try {
-          const studentRes = await api.get(`/students/${campusId}`);
-          if (studentRes.data.success && studentRes.data.student) {
-            const studentData = {
-              ...studentRes.data.student,
-              // Ensure campusId is set correctly
-              campusId: studentRes.data.student.universityId || studentRes.data.student.campusId || campusId
-            };
-            setStudent(studentData);
-            
-            // Then fetch verification history for this student
-            await fetchVerificationHistory(studentData);
-          } else {
-            throw new Error("Student not found in direct fetch");
-          }
-        } catch (directErr) {
-          console.log("Direct fetch failed, trying list method...", directErr);
-          // If direct fetch fails, try fetching all students and find the matching one
-          await fetchStudentFromList();
+        // Fetch student from Supabase
+        const { data: studentData, error: studentError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('student_id', campusId)
+          .single();
+
+        if (studentError) {
+          throw new Error("Student not found");
+        }
+
+        if (studentData) {
+          // Format student data for display
+          const formattedStudent = {
+            ...studentData,
+            campusId: studentData.student_id,
+            universityId: studentData.student_id,
+            fullName: `${studentData.first_name || ''} ${studentData.middle_name || ''} ${studentData.last_name || ''}`.trim(),
+            firstName: studentData.first_name,
+            lastName: studentData.last_name,
+            email: studentData.email,
+            phoneNumber: studentData["phone-number"],
+            department: studentData.department,
+            batch: studentData.year ? new Date(studentData.year).getFullYear().toString() : null,
+            status: studentData.status || 'Active',
+            enrollmentDate: studentData.registered_at,
+            gender: studentData.Gender,
+            isActive: studentData.status === 'active'
+          };
+          
+          setStudent(formattedStudent);
+          
+          // Fetch verification history for this student
+          await fetchVerificationHistory(studentData.student_id);
+        } else {
+          setError(`Student with ID "${campusId}" not found.`);
         }
       } catch (err) {
         console.error("Error fetching student data:", err);
@@ -47,48 +64,27 @@ export default function StudentView() {
       }
     };
 
-    const fetchStudentFromList = async () => {
+    const fetchVerificationHistory = async (studentId) => {
       try {
-        const studentRes = await api.get(`/students`);
-        
-        if (studentRes.data.success && studentRes.data.students) {
-          // Map universityId to campusId and find the specific student
-          const studentsWithCampusId = studentRes.data.students.map(s => ({
-            ...s,
-            campusId: s.universityId || s.campusId
-          }));
-          
-          const foundStudent = studentsWithCampusId.find(
-            s => s.campusId === campusId || s.id === campusId || s._id === campusId
-          );
-          
-          if (foundStudent) {
-            setStudent(foundStudent);
-            await fetchVerificationHistory(foundStudent);
-          } else {
-            setError(`Student with ID "${campusId}" not found. Available IDs: ${studentsWithCampusId.slice(0, 5).map(s => s.campusId).join(', ')}...`);
-          }
-        } else {
-          setError("Unable to load student data from server.");
-        }
-      } catch (err) {
-        throw err;
-      }
-    };
+        const { data: mealRecords, error: mealError } = await supabase
+          .from('meal_records')
+          .select('*')
+          .eq('student_id', studentId)
+          .order('consumed_at', { ascending: false });
 
-    const fetchVerificationHistory = async (studentData) => {
-      try {
-        const historyRes = await api.get(`/verification-logs`);
-        if (historyRes.data.success && historyRes.data.logs) {
-          // Filter logs for this student using universityId or campusId
-          const studentLogs = historyRes.data.logs.filter(
-            log => log.universityId === studentData.campusId || 
-                   log.campusId === studentData.campusId ||
-                   log.studentId === studentData.id ||
-                   log.studentId === studentData._id
-          );
-          setVerificationHistory(studentLogs);
-        }
+        if (mealError) throw mealError;
+
+        // Format meal records as verification history
+        const history = mealRecords.map(record => ({
+          id: record.id,
+          studentId: record.student_id,
+          mealType: record.meal_type,
+          timestamp: record.consumed_at,
+          status: 'verified',
+          verifiedBy: 'System'
+        }));
+
+        setVerificationHistory(history);
       } catch (historyErr) {
         console.warn("Could not fetch verification history:", historyErr);
         // Continue without history - it's optional
@@ -96,10 +92,8 @@ export default function StudentView() {
     };
 
     const handleFetchError = (err) => {
-      if (err.response?.status === 404) {
+      if (err.message?.includes("Student not found")) {
         setError(`Student with ID "${campusId}" not found. Please check the student ID and try again.`);
-      } else if (err.response?.status === 500) {
-        setError("Server error. Please try again later.");
       } else if (err.message?.includes("Network Error")) {
         setError("Network error. Please check your connection and try again.");
       } else {
@@ -123,7 +117,7 @@ export default function StudentView() {
     universityId: campusId,
     email: "student@mtu.edu.et",
     phoneNumber: "+251-XXX-XXXX",
-    address: "Mizan Tepi University Campus",
+    address: "Mekelle University Campus",
     department: "Computer Science",
     batch: "2023",
     program: "Undergraduate",
@@ -413,7 +407,6 @@ const OverviewTab = ({ student, verificationHistory }) => {
               <InfoRow label="Campus ID" value={student.campusId} />
               <InfoRow label="Email" value={student.email || student.emailAddress || "Not provided"} />
               <InfoRow label="Phone" value={student.phone || student.phoneNumber || "Not provided"} />
-              <InfoRow label="Address" value={student.address || "Not provided"} />
               <InfoRow label="Gender" value={student.gender || "Not specified"} />
             </div>
           </div>
@@ -430,7 +423,6 @@ const OverviewTab = ({ student, verificationHistory }) => {
               <InfoRow label="Program" value={student.program || "Not specified"} />
               <InfoRow label="Enrollment Date" value={student.enrollmentDate ? format(parseISO(student.enrollmentDate), "MMM dd, yyyy") : "Not specified"} />
               <InfoRow label="Status" value={student.status || "Active"} />
-              <InfoRow label="Student Type" value={student.studentType || "Regular"} />
             </div>
           </div>
 
@@ -487,10 +479,8 @@ const AcademicTab = ({ student }) => (
         </h3>
         <div className="space-y-4">
           <InfoRow label="Department" value={student.department || "Not specified"} />
-          <InfoRow label="Faculty" value={student.faculty || "Not specified"} />
           <InfoRow label="Program" value={student.program || "Not specified"} />
           <InfoRow label="Batch/Year" value={student.batch || "Not specified"} />
-          <InfoRow label="Semester" value={student.semester || "Not specified"} />
           <InfoRow label="CGPA" value={student.cgpa || "Not available"} />
         </div>
       </div>
@@ -503,10 +493,8 @@ const AcademicTab = ({ student }) => (
         </h3>
         <div className="space-y-4">
           <InfoRow label="Enrollment Date" value={student.enrollmentDate ? format(parseISO(student.enrollmentDate), "MMM dd, yyyy") : "Not specified"} />
-          <InfoRow label="Expected Graduation" value={student.graduationDate || "Not specified"} />
           <InfoRow label="Academic Status" value={student.status || "Active"} />
           <InfoRow label="Student Type" value={student.studentType || "Regular"} />
-          <InfoRow label="Credit Hours" value={student.creditHours || "Not specified"} />
           <InfoRow label="Scholarship" value={student.scholarship || "None"} />
         </div>
       </div>
@@ -743,4 +731,4 @@ const InfoRow = ({ label, value }) => (
       {value}
     </span>
   </div>
-); 
+);

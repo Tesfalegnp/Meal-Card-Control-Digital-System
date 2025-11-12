@@ -7,7 +7,6 @@ import StudentDeanDashboard from "./pages/dashboards/StudentDeanDashboard";
 import CafeManagerDashboard from "./pages/dashboards/CafeManagerDashboard";
 import DailyStatus from "./pages/DailyStatus";
 import DenyManagement from "./pages/DenyManagement";
-import NotFound from "./pages/NotFound";
 import QrPrint from "./pages/QrPrint";
 import Register from "./pages/Register";
 import Settings from "./pages/Settings";
@@ -15,66 +14,35 @@ import StudentView from "./pages/StudentView";
 import Students from "./pages/Students";
 import UpdateStudent from "./pages/UpdateStudent";
 import Verify from "./pages/Verify";
+import NotFound from "./pages/NotFound";
+import CafeStudentsView from './pages/cafeteria/CafeStudentsView';
+import Complaints from './pages/Complaints';
+import StockRegister from './pages/store/StockRegister';
+import StockRemain from './pages/store/StockRemain';
+import InventoryManagement from './pages/store/InventoryManagement';
+import SupplierManagement from './pages/store/SupplierManagement';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing authentication on app load
   useEffect(() => {
-    const checkAuthStatus = () => {
-      try {
-        const savedUser = localStorage.getItem('currentUser');
-        const authStatus = localStorage.getItem('isAuthenticated');
-        
-        if (savedUser && authStatus === 'true') {
-          setCurrentUser(JSON.parse(savedUser));
-          setIsAuthenticated(true);
-        }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-        // Clear invalid storage
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('isAuthenticated');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuthStatus();
+    const role = localStorage.getItem("role");
+    const username = localStorage.getItem("username");
+    if (role && username) setUser({ role, name: username });
+    setLoading(false);
   }, []);
 
-  const handleLogin = (userProfile) => {
-    try {
-      setCurrentUser(userProfile);
-      setIsAuthenticated(true);
-      
-      // Save to localStorage for persistence
-      localStorage.setItem('currentUser', JSON.stringify(userProfile));
-      localStorage.setItem('isAuthenticated', 'true');
-    } catch (error) {
-      console.error('Error saving auth data:', error);
-    }
-  };
-
+  const handleLogin = (userData) => setUser(userData);
   const handleLogout = () => {
-    try {
-      setCurrentUser(null);
-      setIsAuthenticated(false);
-      
-      // Clear localStorage
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('isAuthenticated');
-    } catch (error) {
-      console.error('Error during logout:', error);
-    }
+    setUser(null);
+    localStorage.removeItem("role");
+    localStorage.removeItem("username");
   };
 
-  // Show loading spinner while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
@@ -87,158 +55,37 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
-        <Route
-          path="/login"
-          element={
-            isAuthenticated ? (
-              <Navigate to={`/dashboard/${currentUser?.role || 'cafeManager'}`} replace />
-            ) : (
-              <Login onLogin={handleLogin} />
-            )
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            isAuthenticated ? (
-              <Navigate to={`/dashboard/${currentUser?.role || 'cafeManager'}`} replace />
-            ) : (
-              <Register />
-            )
-          }
-        />
-        <Route
-          path="/verify"
-          element={
-            isAuthenticated ? (
-              <Navigate to={`/dashboard/${currentUser?.role || 'cafeManager'}`} replace />
-            ) : (
-              <Verify />
-            )
-          }
-        />
+        <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to={`/dashboard/${user.role}`} />} />
+        <Route path="/register" element={!user ? <Register /> : <Navigate to={`/dashboard/${user.role}`} />} />
+        <Route path="/verify" element={!user ? <Verify /> : <Navigate to={`/dashboard/${user.role}`} />} />
 
-        {/* Protected Routes with Layout */}
-        <Route
-          path="/dashboard/studentDean"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <StudentDeanDashboard />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/dashboard/cafeManager"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <CafeManagerDashboard />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-
-        {/* Additional Protected Routes */}
-        <Route
-          path="/daily-status"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <DailyStatus />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/deny-management"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <DenyManagement />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/qr-print"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <QrPrint />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <Settings />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/student-view"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <StudentView />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/students"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <Students />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-        <Route
-          path="/update-student"
-          element={
-            isAuthenticated ? (
-              <Layout user={currentUser} onLogout={handleLogout}>
-                <UpdateStudent />
-              </Layout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-
-        {/* Root path redirect */}
-        <Route 
-          path="/" 
-          element={
-            <Navigate to={isAuthenticated ? `/dashboard/${currentUser?.role || 'cafeManager'}` : "/login"} replace />
-          } 
-        />
+        {/* Protected Routes */}
+        <Route path="/dashboard/studentDean" element={user ? <Layout user={user} onLogout={handleLogout}><StudentDeanDashboard /></Layout> : <Navigate to="/login" />} />
+        <Route path="/dashboard/cafeManager" element={user ? <Layout user={user} onLogout={handleLogout}><CafeManagerDashboard /></Layout> : <Navigate to="/login" />} />
         
-        {/* Catch all route */}
+        {/* Student Management */}
+        <Route path="/daily-status" element={user ? <Layout user={user} onLogout={handleLogout}><DailyStatus /></Layout> : <Navigate to="/login" />} />
+        <Route path="/deny-management" element={user ? <Layout user={user} onLogout={handleLogout}><DenyManagement /></Layout> : <Navigate to="/login" />} />
+        <Route path="/student-view" element={user ? <Layout user={user} onLogout={handleLogout}><StudentView /></Layout> : <Navigate to="/login" />} />
+        <Route path="/students" element={user ? <Layout user={user} onLogout={handleLogout}><Students /></Layout> : <Navigate to="/login" />} />
+        <Route path="/update-student" element={user ? <Layout user={user} onLogout={handleLogout}><UpdateStudent /></Layout> : <Navigate to="/login" />} />
+        <Route path="/cafe-students-view" element={user ? <Layout user={user} onLogout={handleLogout}><CafeStudentsView /></Layout> : <Navigate to="/login" />} />
+        
+        {/* Store Management */}
+        <Route path="/stock-register" element={user ? <Layout user={user} onLogout={handleLogout}><StockRegister /></Layout> : <Navigate to="/login" />} />
+        <Route path="/stock-remain" element={user ? <Layout user={user} onLogout={handleLogout}><StockRemain /></Layout> : <Navigate to="/login" />} />
+        <Route path="/inventory" element={user ? <Layout user={user} onLogout={handleLogout}><InventoryManagement /></Layout> : <Navigate to="/login" />} />
+        <Route path="/supplier" element={user ? <Layout user={user} onLogout={handleLogout}><SupplierManagement /></Layout> : <Navigate to="/login" />} />
+        
+        {/* Other Features */}
+        <Route path="/qr-print" element={user ? <Layout user={user} onLogout={handleLogout}><QrPrint /></Layout> : <Navigate to="/login" />} />
+        <Route path="/settings" element={user ? <Layout user={user} onLogout={handleLogout}><Settings /></Layout> : <Navigate to="/login" />} />
+        <Route path="/complaints" element={user ? <Layout user={user} onLogout={handleLogout}><Complaints /></Layout> : <Navigate to="/login" />} />
+
+        {/* Root redirect */}
+        <Route path="/" element={<Navigate to={user ? `/dashboard/${user.role}` : "/login"} />} />
+
+        {/* Catch-all */} 
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

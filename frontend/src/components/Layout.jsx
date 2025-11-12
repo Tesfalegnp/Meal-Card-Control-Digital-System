@@ -1,35 +1,29 @@
-// src/components/Layout.jsx
-import React, { useState, useCallback } from "react";
-import SmartSidebar from "./Sidebar";
-import Header from "./Header";
-import Footer from "./Footer";
+import React from "react";
+import { Outlet } from "react-router-dom";
+import CafeManagerSidebar from "./sidebars/CafeManagerSidebar";
+import StudentDeanSidebar from "./sidebars/StudentDeanSidebar";
 
-export default function Layout({ user, onLogout, children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export default function Layout({ children, user, onLogout }) {
+  const role = user?.role || localStorage.getItem("role");
 
-  const handleCloseSidebar = useCallback(() => {
-    setSidebarOpen(false);
-  }, []);
+  const renderSidebar = () => {
+    if (role === "studentDean") {
+      return <StudentDeanSidebar onLogout={onLogout} />;
+    } else if (role === "cafeManager") {
+      return <CafeManagerSidebar onLogout={onLogout} />;
+    } else {
+      return null;
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      <SmartSidebar 
-        isOpen={sidebarOpen} 
-        onClose={handleCloseSidebar}
-        user={user}
-        onLogout={onLogout}
-      />
-      
-      <div className="flex-1 flex flex-col lg:ml-80 transition-all duration-300 min-w-0">
-        <Header onMenuClick={() => setSidebarOpen(true)} user={user} onLogout={onLogout} />
-        
-        <main className="flex-1 p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
-        
-        <Footer />
+      {/* Sidebar */}
+      {renderSidebar()}
+
+      {/* Main Content */}
+      <div className="flex-1 p-6 overflow-auto">
+        {children ? children : <Outlet />}
       </div>
     </div>
   );

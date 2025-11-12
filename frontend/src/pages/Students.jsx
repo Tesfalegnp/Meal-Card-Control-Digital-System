@@ -1,6 +1,6 @@
-// meal-card-system/frontend/src/pages/Students.jsx
+// src/pages/Students.jsx
 import React, { useEffect, useState } from "react";
-import { api } from "../services/api";
+import { supabase } from "../services/supabase_connect";
 import { FaEdit, FaTrash, FaQrcode, FaSearch, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -13,13 +13,33 @@ export default function Students() {
 
   const fetchStudents = async () => {
     try {
-      const res = await api.get("/students");
-      if (res.data.success) {
-        setStudents(res.data.students);
-        setFiltered(res.data.students);
-      }
+      const { data, error } = await supabase
+        .from('students')
+        .select('*')
+        .order('first_name');
+
+      if (error) throw error;
+      
+      // Format students for display
+      const formattedStudents = data.map(student => ({
+        id: student.id,
+        student_id: student.student_id,
+        fullName: `${student.first_name || ''} ${student.middle_name || ''} ${student.last_name || ''}`.trim(),
+        firstName: student.first_name,
+        lastName: student.last_name,
+        department: student.department,
+        batch: student.year ? new Date(student.year).getFullYear().toString() : 'N/A',
+        email: student.email,
+        phone: student["phone-number"],
+        status: student.status || 'active',
+        registered_at: student.registered_at,
+        qr_code: student.qr_code
+      }));
+
+      setStudents(formattedStudents);
+      setFiltered(formattedStudents);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching students:", err);
       alert("Failed to fetch students");
     } finally {
       setLoading(false);
@@ -37,26 +57,29 @@ export default function Students() {
       students.filter(
         (s) =>
           s.fullName?.toLowerCase().includes(lowerSearch) ||
-          s.universityId?.toLowerCase().includes(lowerSearch)
+          s.student_id?.toLowerCase().includes(lowerSearch) ||
+          s.department?.toLowerCase().includes(lowerSearch)
       )
     );
   }, [search, students]);
 
   // 🗑️ Delete student with confirmation
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, studentId) => {
     if (!window.confirm("⚠️ Are you sure you want to delete this student?")) return;
 
     try {
-      const res = await api.delete(`/students/${id}`);
-      if (res.data.success) {
-        setStudents((prev) => prev.filter((s) => s.id !== id));
-        alert("Student deleted successfully!");
-      } else {
-        alert(res.data.message || "Delete failed");
-      }
+      const { error } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setStudents((prev) => prev.filter((s) => s.id !== id));
+      alert("Student deleted successfully!");
     } catch (err) {
-      console.error(err);
-      alert("Failed to delete student");
+      console.error("Delete error:", err);
+      alert("Failed to delete student: " + err.message);
     }
   };
 
@@ -67,7 +90,12 @@ export default function Students() {
 
   // 📄 Redirect to QR Print Page
   const handleQrPrint = (student) => {
-    navigate(`/qr-print/${student.id}`, { state: { student } });
+    navigate(`/qr-print`, { state: { student } });
+  };
+
+  // 👁️ View student details
+  const handleViewStudent = (student) => {
+    navigate(`/student-view/${student.student_id}`);
   };
 
   // ➕ Add new student
@@ -108,7 +136,7 @@ export default function Students() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name or university ID..."
+                  placeholder="Search by name, ID, or department..."
                   className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl 
                            focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 
                            transition-all duration-200 bg-gray-50 hover:bg-white"
@@ -152,6 +180,9 @@ export default function Students() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Academic Details
                   </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    Status
+                  </th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 uppercase tracking-wider">
                     Actions
                   </th>
@@ -169,11 +200,17 @@ export default function Students() {
                       {/* Student Information */}
                       <td className="px-6 py-4">
                         <div>
-                          <div className="text-lg font-semibold text-gray-900">
+                          <div 
+                            className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-pointer"
+                            onClick={() => handleViewStudent(student)}
+                          >
                             {student.fullName}
                           </div>
                           <div className="text-sm text-gray-600 mt-1">
-                            ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{student.universityId}</span>
+                            ID: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{student.student_id}</span>
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            {student.email}
                           </div>
                         </div>
                       </td>
@@ -192,43 +229,64 @@ export default function Students() {
                         </div>
                       </td>
 
+                      {/* Status */}
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          student.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : student.status === 'inactive'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {student.status?.charAt(0).toUpperCase() + student.status?.slice(1)}
+                        </span>
+                      </td>
+
                       {/* Actions */}
                       <td className="px-6 py-4">
-                        <div className="flex justify-center gap-3">
+                        <div className="flex justify-center gap-2">
+                          {/* View Button */}
+                          <button
+                            onClick={() => handleViewStudent(student)}
+                            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white 
+                                     px-3 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 
+                                     transform hover:scale-105 text-sm"
+                            title="View Student"
+                          >
+                            <span>👁️</span>
+                          </button>
+
                           {/* Edit Button */}
                           <button
                             onClick={() => handleUpdate(student)}
                             className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white 
-                                     px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 
-                                     transform hover:scale-105"
+                                     px-3 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 
+                                     transform hover:scale-105 text-sm"
                             title="Edit Student"
                           >
                             <FaEdit className="text-sm" />
-                            <span className="text-sm font-medium">Edit</span>
                           </button>
 
                           {/* QR Code Button */}
                           <button
                             onClick={() => handleQrPrint(student)}
                             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white 
-                                     px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 
-                                     transform hover:scale-105"
+                                     px-3 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 
+                                     transform hover:scale-105 text-sm"
                             title="Generate QR Code"
                           >
                             <FaQrcode className="text-sm" />
-                            <span className="text-sm font-medium">QR</span>
                           </button>
 
                           {/* Delete Button */}
                           <button
-                            onClick={() => handleDelete(student.id)}
+                            onClick={() => handleDelete(student.id, student.student_id)}
                             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white 
-                                     px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 
-                                     transform hover:scale-105"
+                                     px-3 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 
+                                     transform hover:scale-105 text-sm"
                             title="Delete Student"
                           >
                             <FaTrash className="text-sm" />
-                            <span className="text-sm font-medium">Delete</span>
                           </button>
                         </div>
                       </td>
@@ -236,7 +294,7 @@ export default function Students() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="3" className="px-6 py-12 text-center">
+                    <td colSpan="4" className="px-6 py-12 text-center">
                       <div className="text-gray-500">
                         <div className="text-6xl mb-4">📚</div>
                         <h3 className="text-xl font-semibold text-gray-700 mb-2">No students found</h3>
@@ -254,16 +312,22 @@ export default function Students() {
 
         {/* Quick Stats */}
         {filtered.length > 0 && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-blue-500">
               <div className="text-sm text-gray-600">Total Students</div>
               <div className="text-2xl font-bold text-gray-800">{students.length}</div>
             </div>
             <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-green-500">
+              <div className="text-sm text-gray-600">Active</div>
+              <div className="text-2xl font-bold text-gray-800">
+                {students.filter(s => s.status === 'active').length}
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-purple-500">
               <div className="text-sm text-gray-600">Displayed</div>
               <div className="text-2xl font-bold text-gray-800">{filtered.length}</div>
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-purple-500">
+            <div className="bg-white rounded-xl p-4 shadow-md border-l-4 border-orange-500">
               <div className="text-sm text-gray-600">Search Results</div>
               <div className="text-2xl font-bold text-gray-800">
                 {search ? `${filtered.length} found` : 'All students'}
