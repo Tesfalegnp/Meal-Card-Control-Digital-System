@@ -21,6 +21,7 @@ import StockRegister from './pages/store/StockRegister';
 import StockRemain from './pages/store/StockRemain';
 import InventoryManagement from './pages/store/InventoryManagement';
 import SupplierManagement from './pages/store/SupplierManagement';
+import WeeklyMenu from './pages/WeeklyMenu';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -65,6 +66,7 @@ export default function App() {
         
         {/* Student Management */}
         <Route path="/daily-status" element={user ? <Layout user={user} onLogout={handleLogout}><DailyStatus /></Layout> : <Navigate to="/login" />} />
+        <Route path="/verif" element={user ? <Layout user={user} onLogout={handleLogout}><Verify /></Layout> : <Navigate to="/login" />} />
         <Route path="/deny-management" element={user ? <Layout user={user} onLogout={handleLogout}><DenyManagement /></Layout> : <Navigate to="/login" />} />
         <Route path="/student-view" element={user ? <Layout user={user} onLogout={handleLogout}><StudentView /></Layout> : <Navigate to="/login" />} />
         <Route path="/students" element={user ? <Layout user={user} onLogout={handleLogout}><Students /></Layout> : <Navigate to="/login" />} />
@@ -81,6 +83,7 @@ export default function App() {
         <Route path="/qr-print" element={user ? <Layout user={user} onLogout={handleLogout}><QrPrint /></Layout> : <Navigate to="/login" />} />
         <Route path="/settings" element={user ? <Layout user={user} onLogout={handleLogout}><Settings /></Layout> : <Navigate to="/login" />} />
         <Route path="/complaints" element={user ? <Layout user={user} onLogout={handleLogout}><Complaints /></Layout> : <Navigate to="/login" />} />
+        <Route path="/weekly_menu" element={user ? <Layout user={user} onLogout={handleLogout}><WeeklyMenu /></Layout> : <Navigate to="/login" />} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to={user ? `/dashboard/${user.role}` : "/login"} />} />

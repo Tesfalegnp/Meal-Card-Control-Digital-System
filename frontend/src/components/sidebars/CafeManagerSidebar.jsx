@@ -25,6 +25,7 @@ const CafeManagerSidebar = ({ isOpen, onClose, onLogout }) => {
         items: [
           { path: '/cafe-students-view', label: 'View Students', icon: '👥' },
           { path: '/student-view', label: 'Student Search', icon: '🔍' },
+          { path: '/verif', label: 'Student verify', icon: '👥-🔍' },
           { path: '/deny-management', label: 'Denied Students', icon: '🚫' },
         ]
       },
@@ -37,7 +38,8 @@ const CafeManagerSidebar = ({ isOpen, onClose, onLogout }) => {
           { path: '/stock-remain', label: 'Remaining Stock', icon: '📊' },
           { path: '/inventory', label: 'Inventory Management', icon: '🗃️' },
           { path: '/supplier', label: 'Supplier Management', icon: '🚚' },
-        ]
+          { path: '/weekly_menu', label: 'weekly_menu Management', icon: '📝' },
+        ] 
       },
       {
         key: 'features',

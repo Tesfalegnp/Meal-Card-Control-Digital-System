@@ -6,13 +6,26 @@ const BaseSidebar = ({
   isOpen, 
   onClose, 
   onLogout, 
-  roleConfig 
+  roleConfig,
+  isCollapsed: externalIsCollapsed,
+  onToggleCollapse 
 }) => {
   const location = useLocation();
   const [expandedMenu, setExpandedMenu] = useState(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileDropdownOpen, setIsMobileDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Use external state if provided, otherwise use internal state
+  const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
+  const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalIsCollapsed;
+
+  const toggleCollapse = () => {
+    if (onToggleCollapse) {
+      onToggleCollapse(!isCollapsed);
+    } else {
+      setInternalIsCollapsed(!isCollapsed);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,10 +41,6 @@ const BaseSidebar = ({
 
   const toggleMenu = (menu) => {
     setExpandedMenu(expandedMenu === menu ? null : menu);
-  };
-
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
   };
 
   const toggleMobileDropdown = () => {
@@ -53,12 +62,6 @@ const BaseSidebar = ({
     expandableMenus,
     styleConfig
   } = roleConfig;
-
-  // Combine all menu items for mobile dropdown
-  const allMobileMenuItems = [
-    ...mainMenuItems,
-    ...expandableMenus.flatMap(menu => menu.items)
-  ];
 
   return (
     <>
@@ -186,19 +189,22 @@ const BaseSidebar = ({
         </div>
       </div>
 
-      {/* Sidebar Container - Hidden on mobile when not open */}
+      {/* Sidebar Container - Now part of flex layout */}
       <div 
         className={`
-          hidden lg:flex fixed inset-y-0 left-0 z-50 
+          hidden lg:flex flex-col z-40
           ${isCollapsed ? 'w-16' : 'w-64'} 
           bg-gradient-to-br from-slate-900 via-purple-900 to-blue-900 
-          text-white transform 
+          text-white 
+          transform 
           ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
-          lg:translate-x-0 lg:static 
+          lg:translate-x-0 
           transition-all duration-300 ease-in-out 
           shadow-2xl border-r border-white/10
           backdrop-blur-sm bg-opacity-90
-          flex-col
+          flex-shrink-0
+          h-screen
+          overflow-y-auto
         `}
       >
         
@@ -207,6 +213,7 @@ const BaseSidebar = ({
           flex items-center justify-between p-4 
           border-b border-white/20 
           ${isCollapsed ? 'flex-col space-y-2' : ''}
+          flex-shrink-0
         `}>
           <div className="flex items-center space-x-3">
             <div className={`
@@ -235,6 +242,7 @@ const BaseSidebar = ({
               p-1.5 rounded-lg transition-all duration-200
               hover:bg-white/10 active:scale-95
               ${isCollapsed ? 'rotate-180' : ''}
+              flex-shrink-0
             `}
             title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
@@ -255,7 +263,7 @@ const BaseSidebar = ({
           </button>
         </div>
 
-        {/* Navigation Section - Desktop */}
+        {/* Navigation Section - Desktop - Scrollable if needed */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {/* Main Menu Items */}
           {mainMenuItems.map(item => (
@@ -368,7 +376,7 @@ const BaseSidebar = ({
         </nav>
 
         {/* Footer Section - Desktop */}
-        <div className="mt-auto p-4 border-t border-white/20">
+        <div className="mt-auto p-4 border-t border-white/20 flex-shrink-0">
           <button 
             onClick={onLogout}
             className={`
