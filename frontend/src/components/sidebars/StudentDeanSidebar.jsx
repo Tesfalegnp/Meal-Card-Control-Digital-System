@@ -1,40 +1,30 @@
-// frontend/src/components/sidebars/StudentDeanSidebar.jsx
+// src/components/sidebars/CafeManagerSidebar.jsx
 import React from 'react';
 import BaseSidebar from './BaseSidebar';
 
 const StudentDeanSidebar = ({ isOpen, onClose, onLogout }) => {
   const roleConfig = {
     styleConfig: {
-      title: 'Student Dean',
-      subtitle: 'Student Affairs',
-      logoIcon: '🎓',
-      accentGradient: 'from-purple-600 to-blue-500',
-      accentShadow: 'shadow-purple-500/25'
+      title: 'Cafe Manager',
+      subtitle: 'Administrator Portal',
+      logoIcon: '🍽️',
+      accentGradient: 'from-green-600 to-emerald-500',
+      accentShadow: 'shadow-green-500/25'
     },
     mainMenuItems: [
+      { path: '/dashboard/cafeManager', label: 'Dashboard', icon: '📊' },
+      { path: '/support', label: 'Support', icon: '🛟' },
+      { path: '/daily-status', label: 'Daily Status', icon: '📋' },
+      { path: '/qr-print', label: 'QR Printing', icon: '🖨️' },
+      { path: '/audit', label: 'Audit Log', icon: '📋', badge: '5' },
+      { path: '/settings', label: 'System Settings', icon: '⚙️' },
+      { path: '/reports', label: 'Reports & Analytics', icon: '📈' },
+      { path: '/students', label: 'Student Management', icon: '👨‍🎓', badge: '23' },
+      { path: '/complaints', label: 'Complaints', icon: '📝' },
       { path: '/dashboard/studentDean', label: 'Dashboard', icon: '📊' },
+ 
     ],
-    expandableMenus: [
-      {
-        key: 'students',
-        label: 'Student Management',
-        icon: '👨‍🎓',
-        items: [
-          { path: '/students', label: 'Student Management', icon: '👨‍🎓', badge: '23' },
-          { path: '/reports', label: 'Reports & Analytics', icon: '📈' },
-        ]
-      },
-      {
-        key: 'admin',
-        label: 'Admin',
-        icon: '⚙️',
-        items: [
-          { path: '/settings', label: 'System Settings', icon: '⚙️' },
-          { path: '/audit', label: 'Audit Log', icon: '📋', badge: '5' },
-          { path: '/support', label: 'Support', icon: '🛟' },
-        ]
-      }
-    ]
+    expandableMenus: [ ]
   };
 
   return (
@@ -48,3 +38,4 @@ const StudentDeanSidebar = ({ isOpen, onClose, onLogout }) => {
 };
 
 export default StudentDeanSidebar;
+
