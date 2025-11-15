@@ -11,44 +11,52 @@ const CafeManagerSidebar = ({ isOpen, onClose, onLogout }) => {
       accentGradient: 'from-green-600 to-emerald-500',
       accentShadow: 'shadow-green-500/25'
     },
-    mainMenuItems: [
-      { path: '/dashboard/cafeManager', label: 'Dashboard', icon: '📊' },
-      { path: '/daily-status', label: 'Daily Status', icon: '📋' },
-      { path: '/qr-print', label: 'QR Printing', icon: '🖨️' },
-      { path: '/complaints', label: 'Complaints', icon: '📝' },
-    ],
-    expandableMenus: [
+    menuCategories: [
       {
-        key: 'students',
-        label: 'Student Management',
-        icon: '👨‍🎓',
+        name: 'Dashboard',
+        icon: '📊',
         items: [
-          { path: '/cafe-students-view', label: 'View Students', icon: '👥' },
-          { path: '/student-view', label: 'Student Search', icon: '🔍' },
-          { path: '/verif', label: 'Student verify', icon: '👥-🔍' },
-          { path: '/deny-management', label: 'Denied Students', icon: '🚫' },
+          { path: '/dashboard/cafeManager', label: 'Dashboard Overview', icon: '🏠', badge: 'New' },
+          { path: '/daily-status', label: 'Daily Status', icon: '📋', badge: 'Live' },
+          { path: '/analytics', label: 'Analytics', icon: '📈' },
         ]
       },
       {
-        key: 'store',
-        label: 'Store Management',
-        icon: '🏪',
+        name: 'Meal Management',
+        icon: '🍽️',
         items: [
-          { path: '/stock-register', label: 'New Stock Register', icon: '📦' },
-          { path: '/stock-remain', label: 'Remaining Stock', icon: '📊' },
-          { path: '/inventory', label: 'Inventory Management', icon: '🗃️' },
-          { path: '/supplier', label: 'Supplier Management', icon: '🚚' },
-          { path: '/weekly_menu', label: 'weekly_menu Management', icon: '📝' },
-        ] 
+          { path: '/weekly-menu', label: 'Weekly Menu', icon: '📝' },
+          { path: '/meal-planning', label: 'Meal Planning', icon: '🗓️' },
+          { path: '/verify', label: 'Verify Meals', icon: '✅', badge: 'Scan' },
+        ]
       },
       {
-        key: 'features',
-        label: 'More Features',
-        icon: '🔧',
+        name: 'Student Management',
+        icon: '👨‍🎓',
         items: [
-          { path: '/reports', label: 'Daily Reports', icon: '📑' },
-          { path: '/analytics', label: 'Analytics', icon: '📊' },
-          { path: '/meal-planning', label: 'Meal Planning', icon: '🍽️' },
+          { path: '/cafe-students-view', label: 'All Students', icon: '👥' },
+          { path: '/student-view', label: 'Student Search', icon: '🔍' },
+          { path: '/deny-management', label: 'Access Control', icon: '🚫', badge: '3' },
+          { path: '/qr-print', label: 'QR Code Printing', icon: '🖨️' },
+        ]
+      },
+      {
+        name: 'Inventory & Store',
+        icon: '🏪',
+        items: [
+          { path: '/inventory', label: 'Inventory', icon: '📦', badge: '5 Low' },
+          { path: '/stock-register', label: 'Stock Register', icon: '📊' },
+          { path: '/stock-remain', label: 'Stock Levels', icon: '⚖️' },
+          { path: '/supplier-management', label: 'Suppliers', icon: '🚚' },
+        ]
+      },
+      {
+        name: 'Communication',
+        icon: '💬',
+        items: [
+          { path: '/complaints', label: 'Complaints', icon: '📝', badge: '12' },
+          { path: '/reports', label: 'Reports', icon: '📑' },
+          { path: '/settings', label: 'Settings', icon: '⚙️' },
         ]
       }
     ]

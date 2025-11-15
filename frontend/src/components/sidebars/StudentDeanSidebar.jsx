@@ -6,31 +6,58 @@ const StudentDeanSidebar = ({ isOpen, onClose, onLogout }) => {
   const roleConfig = {
     styleConfig: {
       title: 'Student Dean',
-      subtitle: 'Student Affairs',
+      subtitle: 'Student Affairs Portal',
       logoIcon: '🎓',
       accentGradient: 'from-purple-600 to-blue-500',
       accentShadow: 'shadow-purple-500/25'
     },
-    mainMenuItems: [
-      { path: '/dashboard/studentDean', label: 'Dashboard', icon: '📊' },
-    ],
-    expandableMenus: [
+    menuCategories: [
       {
-        key: 'students',
-        label: 'Student Management',
-        icon: '👨‍🎓',
+        name: 'Dashboard',
+        icon: '📊',
         items: [
-          { path: '/students', label: 'Student Management', icon: '👨‍🎓', badge: '23' },
-          { path: '/reports', label: 'Reports & Analytics', icon: '📈' },
+          { path: '/dashboard/studentDean', label: 'Dashboard Overview', icon: '🏠', badge: 'Live' },
+          { path: '/dean-daily-status', label: 'Daily Attendance', icon: '📋' },
+          { path: '/dean-analytics', label: 'Analytics', icon: '📈' },
         ]
       },
       {
-        key: 'admin',
-        label: 'Admin',
+        name: 'Student Management',
+        icon: '👨‍🎓',
+        items: [
+          { path: '/students', label: 'All Students', icon: '👥', badge: '1.2K' },
+          { path: '/student-registration', label: 'New Registration', icon: '➕' },
+          { path: '/student-profiles', label: 'Student Profiles', icon: '📄' },
+          { path: '/dean-student-view', label: 'Student Search', icon: '🔍' },
+        ]
+      },
+      {
+        name: 'Academic Oversight',
+        icon: '📚',
+        items: [
+          { path: '/academic-performance', label: 'Performance', icon: '📊' },
+          { path: '/attendance-reports', label: 'Attendance', icon: '✅' },
+          { path: '/dean-complaints', label: 'Student Issues', icon: '📝', badge: '8' },
+          { path: '/disciplinary-actions', label: 'Disciplinary', icon: '⚖️' },
+        ]
+      },
+      {
+        name: 'Meal Monitoring',
+        icon: '🍽️',
+        items: [
+          { path: '/dean-meal-status', label: 'Meal Reports', icon: '📋' },
+          { path: '/meal-compliance', label: 'Compliance', icon: '📊' },
+          { path: '/dean-verify', label: 'Verify Students', icon: '✅' },
+          { path: '/meal-exceptions', label: 'Exceptions', icon: '⚠️', badge: '5' },
+        ]
+      },
+      {
+        name: 'Administration',
         icon: '⚙️',
         items: [
-          { path: '/settings', label: 'System Settings', icon: '⚙️' },
-          { path: '/audit', label: 'Audit Log', icon: '📋', badge: '5' },
+          { path: '/dean-settings', label: 'System Settings', icon: '⚙️' },
+          { path: '/audit-logs', label: 'Audit Logs', icon: '📋', badge: 'New' },
+          { path: '/dean-reports', label: 'Reports', icon: '📑' },
           { path: '/support', label: 'Support', icon: '🛟' },
         ]
       }
