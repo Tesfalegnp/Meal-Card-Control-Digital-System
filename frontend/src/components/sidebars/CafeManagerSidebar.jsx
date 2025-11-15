@@ -18,15 +18,13 @@ const CafeManagerSidebar = ({ isOpen, onClose, onLogout }) => {
         items: [
           { path: '/dashboard/cafeManager', label: 'Dashboard Overview', icon: '🏠', badge: 'New' },
           { path: '/daily-status', label: 'Daily Status', icon: '📋', badge: 'Live' },
-          { path: '/analytics', label: 'Analytics', icon: '📈' },
-        ]
+             ]
       },
       {
         name: 'Meal Management',
         icon: '🍽️',
         items: [
-          { path: '/weekly-menu', label: 'Weekly Menu', icon: '📝' },
-          { path: '/meal-planning', label: 'Meal Planning', icon: '🗓️' },
+          { path: '/weekly-menu', label: 'Weekly Menu Planning', icon: '🗓️' },
           { path: '/verify', label: 'Verify Meals', icon: '✅', badge: 'Scan' },
         ]
       },

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabase_connect";
 import { format, parseISO } from "date-fns";
+import { FaArrowLeft, FaPrint, FaSync, FaLock, FaDownload, FaEnvelope, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
 
 export default function StudentView() {
   const { campusId } = useParams();
@@ -12,6 +13,9 @@ export default function StudentView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -46,7 +50,11 @@ export default function StudentView() {
             status: studentData.status || 'Active',
             enrollmentDate: studentData.registered_at,
             gender: studentData.Gender,
-            isActive: studentData.status === 'active'
+            isActive: studentData.status === 'active',
+            program: studentData.program,
+            address: studentData.address || "Not provided",
+            emergency_contact: studentData.emergency_contact || "Not provided",
+            meal_plan: studentData.meal_plan || "Standard"
           };
           
           setStudent(formattedStudent);
@@ -70,7 +78,8 @@ export default function StudentView() {
           .from('meal_records')
           .select('*')
           .eq('student_id', studentId)
-          .order('consumed_at', { ascending: false });
+          .order('consumed_at', { ascending: false })
+          .limit(50);
 
         if (mealError) throw mealError;
 
@@ -87,7 +96,6 @@ export default function StudentView() {
         setVerificationHistory(history);
       } catch (historyErr) {
         console.warn("Could not fetch verification history:", historyErr);
-        // Continue without history - it's optional
       }
     };
 
@@ -109,38 +117,85 @@ export default function StudentView() {
     }
   }, [campusId]);
 
-  // Enhanced mock data that matches your database structure
-  const mockStudent = {
-    id: campusId,
-    fullName: "Sample Student",
-    campusId: campusId,
-    universityId: campusId,
-    email: "student@mtu.edu.et",
-    phoneNumber: "+251-XXX-XXXX",
-    address: "Mekelle University Campus",
-    department: "Computer Science",
-    batch: "2023",
-    program: "Undergraduate",
-    status: "Active",
-    enrollmentDate: "2023-09-01",
-    registrationDate: new Date().toISOString(),
-    emergencyContact: {
-      name: "Parent Name",
-      phone: "+251-XXX-XXXX",
-      relationship: "Parent"
-    },
-    firstName: "Sample",
-    lastName: "Student",
-    gender: "Male",
-    isActive: true
+  // Password Reset Function
+  const handlePasswordReset = async () => {
+    if (!student || !window.confirm("Are you sure you want to reset this student's password to default?\n\nDefault password will be: 123" + student.lastName?.toLowerCase())) {
+      return;
+    }
+
+    try {
+      setResettingPassword(true);
+      
+      // Generate default password: "123+last_name"
+      const defaultPassword = `123${student.lastName}`.toLowerCase();
+      
+      // Update student password in database
+      const { error } = await supabase
+        .from('students')
+        .update({ 
+          password: defaultPassword,
+          updated_at: new Date().toISOString()
+        })
+        .eq('student_id', campusId);
+
+      if (error) throw error;
+
+      setPasswordResetSuccess(true);
+      setTimeout(() => setPasswordResetSuccess(false), 5000);
+
+    } catch (err) {
+      console.error("Error resetting password:", err);
+      alert("Failed to reset password: " + err.message);
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  // Export Student Data
+  const handleExportData = async () => {
+    try {
+      setExportingData(true);
+      
+      const studentData = {
+        ...student,
+        verificationHistory,
+        exportedAt: new Date().toISOString(),
+        totalMeals: verificationHistory.filter(v => v.status === 'verified').length
+      };
+
+      // Create and download JSON file
+      const dataStr = JSON.stringify(studentData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `student_${student.campusId}_${format(new Date(), 'yyyy-MM-dd')}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (err) {
+      console.error("Error exporting data:", err);
+      alert("Failed to export student data");
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  // Send Email to Student
+  const handleSendEmail = () => {
+    const subject = encodeURIComponent("Regarding Your Student Account");
+    const body = encodeURIComponent(`Dear ${student.fullName},\n\n`);
+    window.open(`mailto:${student.email}?subject=${subject}&body=${body}`);
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-blue-800 font-semibold">Loading student profile...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-blue-800 font-semibold">Loading student profile...</p>
           <p className="text-blue-600 text-sm mt-2">ID: {campusId}</p>
         </div>
       </div>
@@ -158,25 +213,16 @@ export default function StudentView() {
           <p className="text-gray-600 mb-4">{error}</p>
           <div className="space-y-3">
             <button
-              onClick={() => navigate("/daily-status")}
+              onClick={() => navigate("/students")}
               className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl px-6 py-3 font-semibold transition-all shadow-lg hover:shadow-xl"
             >
-              Back to Dashboard
-            </button>
-            <button
-              onClick={() => navigate("/students")}
-              className="w-full bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white rounded-xl px-6 py-3 font-semibold transition-all shadow-lg hover:shadow-xl"
-            >
-              View All Students
+              Back to Students
             </button>
           </div>
         </div>
       </div>
     );
   }
-
-  // Use real data if available, otherwise use enhanced mock data
-  const displayStudent = student || mockStudent;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -185,47 +231,73 @@ export default function StudentView() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="flex-1">
             <button
-              onClick={() => navigate("/daily-status")}
+              onClick={() => navigate("/students")}
               className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold mb-4 transition-colors group"
             >
-              <span className="group-hover:-translate-x-1 transition-transform">←</span>
-              Back to Dashboard
+              <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" />
+              Back to Students
             </button>
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                  {displayStudent.fullName?.split(' ').map(n => n[0]).join('') || "SS"}
+                  {student.fullName?.split(' ').map(n => n[0]).join('') || "SS"}
                 </div>
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-bold text-gray-800">{displayStudent.fullName}</h1>
-                  <p className="text-gray-600 mt-1">{displayStudent.department || "Department not specified"}</p>
+                  <h1 className="text-3xl md:text-4xl font-bold text-gray-800">{student.fullName}</h1>
+                  <p className="text-gray-600 mt-1">{student.department || "Department not specified"}</p>
+                  <div className="flex items-center gap-4 mt-2">
+                    {student.email && (
+                      <button
+                        onClick={handleSendEmail}
+                        className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm transition-colors"
+                      >
+                        <FaEnvelope className="text-xs" />
+                        {student.email}
+                      </button>
+                    )}
+                    {student.phoneNumber && (
+                      <span className="flex items-center gap-1 text-gray-600 text-sm">
+                        <FaPhone className="text-xs" />
+                        {student.phoneNumber}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="bg-white rounded-xl shadow-lg px-6 py-3 border border-blue-100">
                 <p className="text-sm text-gray-600 font-medium">Campus ID</p>
-                <p className="font-mono font-bold text-blue-600 text-xl">{displayStudent.campusId}</p>
+                <p className="font-mono font-bold text-blue-600 text-xl">{student.campusId}</p>
               </div>
             </div>
-            {!student && (
-              <div className="mt-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg text-sm inline-flex items-center gap-2">
-                ⚠️ Showing demo data. Student data not loaded from server.
-              </div>
-            )}
           </div>
 
           {/* Quick Actions */}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => window.print()}
-              className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl px-4 py-2 font-semibold transition-colors shadow-sm"
+              onClick={handleExportData}
+              disabled={exportingData}
+              className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl px-4 py-2 font-semibold transition-colors shadow-sm"
             >
-              🖨️ Print
+              {exportingData ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+              ) : (
+                <FaDownload />
+              )}
+              {exportingData ? "Exporting..." : "Export"}
             </button>
             <button
-              onClick={() => navigate(`/verify?student=${displayStudent.campusId}`)}
-              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl px-4 py-2 font-semibold transition-all shadow-lg hover:shadow-xl"
+              onClick={() => window.print()}
+              className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl px-4 py-2 font-semibold transition-colors shadow-sm"
             >
-              ✅ Verify Meal
+              <FaPrint />
+              Print
+            </button>
+            <button
+              onClick={() => navigate(`/qr-print?studentId=${student.campusId}`)}
+              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl px-4 py-2 font-semibold transition-all shadow-lg hover:shadow-xl"
+            >
+              <FaPrint />
+              Print QR
             </button>
           </div>
         </div>
@@ -234,21 +306,21 @@ export default function StudentView() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl shadow-lg p-4 text-center border border-blue-100">
             <div className="text-2xl font-bold text-blue-600">{verificationHistory.filter(v => v.status === 'verified').length}</div>
-            <div className="text-gray-600 text-sm">Verified Meals</div>
+            <div className="text-gray-600 text-sm">Total Meals</div>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-4 text-center border border-green-100">
-            <div className="text-2xl font-bold text-green-600">{displayStudent.batch || "N/A"}</div>
+            <div className="text-2xl font-bold text-green-600">{student.batch || "N/A"}</div>
             <div className="text-gray-600 text-sm">Batch Year</div>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-4 text-center border border-purple-100">
             <div className="text-2xl font-bold text-purple-600">
-              {displayStudent.status === 'Active' ? '✅' : '❌'} {displayStudent.status || 'Active'}
+              {student.status === 'active' ? '✅' : '❌'}
             </div>
             <div className="text-gray-600 text-sm">Status</div>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-4 text-center border border-orange-100">
             <div className="text-2xl font-bold text-orange-600">
-              {new Date().getFullYear() - parseInt(displayStudent.batch) || 1}
+              {student.batch ? new Date().getFullYear() - parseInt(student.batch) : "N/A"}
             </div>
             <div className="text-gray-600 text-sm">Year of Study</div>
           </div>
@@ -260,10 +332,11 @@ export default function StudentView() {
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
               {[
-                { id: "overview", label: "Student Overview", icon: "👤" },
-                { id: "academic", label: "Academic Details", icon: "🎓" },
+                { id: "overview", label: "Overview", icon: "👤" },
+                { id: "academic", label: "Academic", icon: "🎓" },
+                { id: "contact", label: "Contact Info", icon: "📞" },
+                { id: "security", label: "Security", icon: "🔒" },
                 { id: "verification-history", label: "Meal History", icon: "📊" },
-                { id: "documents", label: "Documents", icon: "📁" }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -283,10 +356,18 @@ export default function StudentView() {
 
           {/* Tab Content */}
           <div className="p-6">
-            {activeTab === "overview" && <OverviewTab student={displayStudent} verificationHistory={verificationHistory} />}
-            {activeTab === "academic" && <AcademicTab student={displayStudent} />}
+            {activeTab === "overview" && <OverviewTab student={student} verificationHistory={verificationHistory} />}
+            {activeTab === "academic" && <AcademicTab student={student} />}
+            {activeTab === "contact" && <ContactTab student={student} onSendEmail={handleSendEmail} />}
+            {activeTab === "security" && (
+              <SecurityTab 
+                student={student} 
+                onPasswordReset={handlePasswordReset}
+                resettingPassword={resettingPassword}
+                passwordResetSuccess={passwordResetSuccess}
+              />
+            )}
             {activeTab === "verification-history" && <VerificationHistoryTab verificationHistory={verificationHistory} />}
-            {activeTab === "documents" && <DocumentsTab student={displayStudent} />}
           </div>
         </div>
       </div>
@@ -317,7 +398,7 @@ const OverviewTab = ({ student, verificationHistory }) => {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">Status</span>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  student.status === 'Active' 
+                  student.status === 'active' 
                     ? 'bg-green-100 text-green-800' 
                     : 'bg-red-100 text-red-800'
                 }`}>
@@ -343,19 +424,6 @@ const OverviewTab = ({ student, verificationHistory }) => {
                 Upload Student Photo
               </div>
             </label>
-          </div>
-
-          {/* Emergency Contact */}
-          <div className="bg-gradient-to-br from-red-50 to-pink-100 rounded-2xl p-6 border border-red-200">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="text-red-500">🆘</span>
-              Emergency Contact
-            </h3>
-            <div className="space-y-3">
-              <InfoRow label="Contact Person" value={student.emergencyContact?.name || "Not provided"} />
-              <InfoRow label="Contact Phone" value={student.emergencyContact?.phone || "Not provided"} />
-              <InfoRow label="Relationship" value={student.emergencyContact?.relationship || "Not provided"} />
-            </div>
           </div>
 
           {/* Quick Stats */}
@@ -405,9 +473,12 @@ const OverviewTab = ({ student, verificationHistory }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InfoRow label="Full Name" value={student.fullName} />
               <InfoRow label="Campus ID" value={student.campusId} />
-              <InfoRow label="Email" value={student.email || student.emailAddress || "Not provided"} />
-              <InfoRow label="Phone" value={student.phone || student.phoneNumber || "Not provided"} />
+              <InfoRow label="Email" value={student.email || "Not provided"} />
+              <InfoRow label="Phone" value={student.phoneNumber || "Not provided"} />
               <InfoRow label="Gender" value={student.gender || "Not specified"} />
+              <InfoRow label="Enrollment Date" value={student.enrollmentDate ? format(parseISO(student.enrollmentDate), "MMM dd, yyyy") : "Not specified"} />
+              <InfoRow label="Meal Plan" value={student.meal_plan || "Standard"} />
+              <InfoRow label="Address" value={student.address || "Not provided"} />
             </div>
           </div>
 
@@ -421,7 +492,6 @@ const OverviewTab = ({ student, verificationHistory }) => {
               <InfoRow label="Department" value={student.department || "Not specified"} />
               <InfoRow label="Batch/Year" value={student.batch || "Not specified"} />
               <InfoRow label="Program" value={student.program || "Not specified"} />
-              <InfoRow label="Enrollment Date" value={student.enrollmentDate ? format(parseISO(student.enrollmentDate), "MMM dd, yyyy") : "Not specified"} />
               <InfoRow label="Status" value={student.status || "Active"} />
             </div>
           </div>
@@ -446,7 +516,9 @@ const OverviewTab = ({ student, verificationHistory }) => {
                       </span>
                       <div>
                         <div className="font-medium text-gray-800 capitalize">{log.mealType}</div>
-                        <div className="text-sm text-gray-600">{format(new Date(log.timestamp), "MMM dd, yyyy")}</div>
+                        <div className="text-sm text-gray-600">
+                          {format(new Date(log.timestamp), "MMM dd, yyyy 'at' HH:mm")}
+                        </div>
                       </div>
                     </div>
                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
@@ -481,7 +553,8 @@ const AcademicTab = ({ student }) => (
           <InfoRow label="Department" value={student.department || "Not specified"} />
           <InfoRow label="Program" value={student.program || "Not specified"} />
           <InfoRow label="Batch/Year" value={student.batch || "Not specified"} />
-          <InfoRow label="CGPA" value={student.cgpa || "Not available"} />
+          <InfoRow label="Student Type" value={student.studentType || "Regular"} />
+          <InfoRow label="Academic Status" value={student.status || "Active"} />
         </div>
       </div>
 
@@ -493,9 +566,9 @@ const AcademicTab = ({ student }) => (
         </h3>
         <div className="space-y-4">
           <InfoRow label="Enrollment Date" value={student.enrollmentDate ? format(parseISO(student.enrollmentDate), "MMM dd, yyyy") : "Not specified"} />
-          <InfoRow label="Academic Status" value={student.status || "Active"} />
-          <InfoRow label="Student Type" value={student.studentType || "Regular"} />
+          <InfoRow label="Meal Plan" value={student.meal_plan || "Standard"} />
           <InfoRow label="Scholarship" value={student.scholarship || "None"} />
+          <InfoRow label="Years Completed" value={student.batch ? new Date().getFullYear() - parseInt(student.batch) : "N/A"} />
         </div>
       </div>
     </div>
@@ -503,22 +576,206 @@ const AcademicTab = ({ student }) => (
     {/* Additional Information */}
     <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-6 border border-purple-200">
       <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-        <span className="text-purple-600">📚</span>
+        <span className="text-purple-600">📋</span>
         Additional Information
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <InfoRow label="Registration Date" value={student.registrationDate ? format(new Date(student.registrationDate), "MMM dd, yyyy") : "Not specified"} />
-        <InfoRow label="Meal Plan Type" value={student.mealPlan || "Standard"} />
-        <InfoRow label="Last Updated" value={student.updatedAt ? format(new Date(student.updatedAt), "MMM dd, yyyy") : "Not available"} />
-        <InfoRow label="Created Date" value={student.createdAt ? format(new Date(student.createdAt), "MMM dd, yyyy") : "Not available"} />
+        <InfoRow label="Last Updated" value={student.updated_at ? format(new Date(student.updated_at), "MMM dd, yyyy") : "Not available"} />
+        <InfoRow label="Account Created" value={student.created_at ? format(new Date(student.created_at), "MMM dd, yyyy") : "Not available"} />
+        <InfoRow label="Student Category" value={student.category || "Undergraduate"} />
       </div>
     </div>
   </div>
 );
 
+const ContactTab = ({ student, onSendEmail }) => (
+  <div className="space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Contact Information */}
+      <div className="bg-gradient-to-br from-blue-50 to-cyan-100 rounded-2xl p-6 border border-blue-200">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <FaEnvelope className="text-blue-600" />
+          Contact Information
+        </h3>
+        <div className="space-y-4">
+          <InfoRow label="Email Address" value={student.email || "Not provided"} />
+          <InfoRow label="Phone Number" value={student.phoneNumber || "Not provided"} />
+          <InfoRow label="Address" value={student.address || "Not provided"} />
+        </div>
+        {student.email && (
+          <button
+            onClick={onSendEmail}
+            className="w-full mt-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl px-4 py-3 font-semibold transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+          >
+            <FaEnvelope />
+            Send Email to Student
+          </button>
+        )}
+      </div>
+
+      {/* Emergency Contact */}
+      <div className="bg-gradient-to-br from-red-50 to-pink-100 rounded-2xl p-6 border border-red-200">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span className="text-red-500">🆘</span>
+          Emergency Contact
+        </h3>
+        <div className="space-y-4">
+          <InfoRow label="Contact Person" value={student.emergency_contact || "Not provided"} />
+          <InfoRow label="Relationship" value={student.emergency_relation || "Not specified"} />
+          <InfoRow label="Contact Phone" value={student.emergency_phone || "Not provided"} />
+          <InfoRow label="Address" value={student.emergency_address || "Not provided"} />
+        </div>
+      </div>
+    </div>
+
+    {/* Communication History */}
+    <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-6 border border-green-200">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <span className="text-green-600">💬</span>
+        Quick Actions
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <button className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-400 transition-all hover:shadow-lg text-center group">
+          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+            <FaPhone className="text-blue-600" />
+          </div>
+          <span className="font-semibold text-gray-800">Call Student</span>
+          <p className="text-sm text-gray-600 mt-1">{student.phoneNumber || "Not available"}</p>
+        </button>
+        
+        <button 
+          onClick={onSendEmail}
+          className="bg-white rounded-xl p-4 border border-gray-200 hover:border-green-400 transition-all hover:shadow-lg text-center group"
+        >
+          <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+            <FaEnvelope className="text-green-600" />
+          </div>
+          <span className="font-semibold text-gray-800">Send Email</span>
+          <p className="text-sm text-gray-600 mt-1">{student.email || "Not available"}</p>
+        </button>
+        
+        <button className="bg-white rounded-xl p-4 border border-gray-200 hover:border-purple-400 transition-all hover:shadow-lg text-center group">
+          <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+            <FaMapMarkerAlt className="text-purple-600" />
+          </div>
+          <span className="font-semibold text-gray-800">View Location</span>
+          <p className="text-sm text-gray-600 mt-1">{student.address || "Not available"}</p>
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+const SecurityTab = ({ student, onPasswordReset, resettingPassword, passwordResetSuccess }) => {
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-br from-red-50 to-pink-100 rounded-2xl p-6 border border-red-200">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <FaLock className="text-red-600" />
+          Account Security
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Manage student account security settings and password reset options.
+        </p>
+
+        {/* Password Reset Section */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+          <h4 className="font-semibold text-yellow-800 mb-3 flex items-center gap-2 text-lg">
+            <FaSync />
+            Password Reset
+          </h4>
+          <p className="text-yellow-700 text-sm mb-4">
+            Reset the student's password to the default format. This is useful if the student has forgotten their password.
+          </p>
+          
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg p-4 border border-yellow-300">
+              <p className="text-sm font-medium text-gray-700 mb-2">Default Password Format:</p>
+              <code className="bg-gray-100 px-3 py-2 rounded text-sm font-mono block text-center">
+                123 + last_name (lowercase)
+              </code>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Example for {student.lastName}: <code className="bg-gray-100 px-2 py-1 rounded font-mono">123{student.lastName?.toLowerCase()}</code>
+              </p>
+            </div>
+
+            {passwordResetSuccess && (
+              <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">✅</span>
+                  <span className="font-medium">Password reset successfully!</span>
+                </div>
+                <p className="text-sm">
+                  New password has been set to: <code className="bg-green-200 px-2 py-1 rounded font-mono">123{student.lastName?.toLowerCase()}</code>
+                </p>
+                <p className="text-xs mt-2 text-green-700">
+                  The student should change their password after next login for security.
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={onPasswordReset}
+              disabled={resettingPassword}
+              className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 
+                       disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 rounded-xl 
+                       transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-3 text-lg"
+            >
+              {resettingPassword ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  Resetting Password...
+                </>
+              ) : (
+                <>
+                  <FaLock />
+                  Reset to Default Password
+                </>
+              )}
+            </button>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <h5 className="font-semibold text-blue-800 mb-1 text-sm">Security Notes:</h5>
+              <ul className="text-blue-700 text-xs space-y-1">
+                <li>• Passwords are encrypted and stored securely</li>
+                <li>• Default password format: 123 + student's last name in lowercase</li>
+                <li>• Student will be prompted to change password on next login</li>
+                <li>• Contact IT support for any account security issues</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Account Status */}
+      <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-6 border border-green-200">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span className="text-green-600">🛡️</span>
+          Account Status
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InfoRow label="Account Status" value={student.status || "Active"} />
+          <InfoRow label="Last Password Change" value={student.last_password_change ? format(new Date(student.last_password_change), "MMM dd, yyyy") : "Not recorded"} />
+          <InfoRow label="Account Created" value={student.created_at ? format(new Date(student.created_at), "MMM dd, yyyy") : "Not available"} />
+          <InfoRow label="Last Login" value={student.last_login ? format(new Date(student.last_login), "MMM dd, yyyy") : "Never"} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const VerificationHistoryTab = ({ verificationHistory }) => {
   const verifiedMeals = verificationHistory.filter(v => v.status === 'verified');
   const failedMeals = verificationHistory.filter(v => v.status === 'failed');
+
+  // Group by date for better organization
+  const groupedByDate = verificationHistory.reduce((acc, log) => {
+    const date = format(new Date(log.timestamp), 'yyyy-MM-dd');
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(log);
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
@@ -541,56 +798,50 @@ const VerificationHistoryTab = ({ verificationHistory }) => {
       </div>
 
       {verificationHistory.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-              <tr>
-                <th className="px-4 py-4 text-left font-semibold">Date</th>
-                <th className="px-4 py-4 text-left font-semibold">Meal Type</th>
-                <th className="px-4 py-4 text-left font-semibold">Time</th>
-                <th className="px-4 py-4 text-left font-semibold">Status</th>
-                <th className="px-4 py-4 text-left font-semibold">Verified By</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {verificationHistory
-                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                .map((log, index) => (
-                <tr key={index} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-800">
-                    {format(new Date(log.timestamp), "MMM dd, yyyy")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${
-                      log.mealType === "breakfast" ? "bg-orange-100 text-orange-800 border-orange-200" :
-                      log.mealType === "lunch" ? "bg-green-100 text-green-800 border-green-200" :
-                      "bg-blue-100 text-blue-800 border-blue-200"
-                    }`}>
-                      {log.mealType === "breakfast" && "🍳"}
-                      {log.mealType === "lunch" && "🍛"}
-                      {log.mealType === "dinner" && "🌙"}
-                      {log.mealType.charAt(0).toUpperCase() + log.mealType.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {format(new Date(log.timestamp), "HH:mm:ss")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${
-                      log.status === "verified" 
-                        ? "bg-green-100 text-green-800 border-green-200" 
-                        : "bg-red-100 text-red-800 border-red-200"
-                    }`}>
-                      {log.status === "verified" ? "✅ Verified" : "❌ Failed"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 font-medium">
-                    {log.verifiedBy || "System"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          {Object.entries(groupedByDate)
+            .sort(([dateA], [dateB]) => new Date(dateB) - new Date(dateA))
+            .map(([date, logs]) => (
+              <div key={date} className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                  <h4 className="font-semibold text-gray-800">
+                    {format(new Date(date), 'EEEE, MMMM dd, yyyy')}
+                  </h4>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {logs
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .map((log, index) => (
+                    <div key={index} className="px-4 py-3 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-10 h-10 rounded-full flex items-center justify-center text-sm ${
+                            log.mealType === "breakfast" ? "bg-orange-100 text-orange-600" :
+                            log.mealType === "lunch" ? "bg-green-100 text-green-600" :
+                            "bg-blue-100 text-blue-600"
+                          }`}>
+                            {log.mealType === "breakfast" ? "🍳" : log.mealType === "lunch" ? "🍛" : "🌙"}
+                          </span>
+                          <div>
+                            <div className="font-medium text-gray-800 capitalize">{log.mealType}</div>
+                            <div className="text-sm text-gray-600">
+                              {format(new Date(log.timestamp), "HH:mm:ss")}
+                            </div>
+                          </div>
+                        </div>
+                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${
+                          log.status === "verified" 
+                            ? "bg-green-100 text-green-800 border-green-200" 
+                            : "bg-red-100 text-red-800 border-red-200"
+                        }`}>
+                          {log.status === "verified" ? "✅ Verified" : "❌ Failed"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
         </div>
       ) : (
         <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl border border-gray-200">
@@ -601,132 +852,16 @@ const VerificationHistoryTab = ({ verificationHistory }) => {
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
             This student hasn't verified any meals yet. Meal verification records will appear here once the student starts using the meal card system.
           </p>
-          <button 
-            onClick={() => window.location.href = '/verify'}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl px-6 py-3 font-semibold transition-all shadow-lg hover:shadow-xl"
-          >
-            Verify First Meal
-          </button>
         </div>
       )}
     </div>
   );
 };
 
-const DocumentsTab = ({ student }) => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center">
-      <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-        <span>📁</span>
-        Student Documents
-      </h3>
-      <button className="bg-blue-500 hover:bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition-colors shadow-lg hover:shadow-xl">
-        📤 Upload Document
-      </button>
-    </div>
-    
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <DocumentCard 
-        title="Student ID Card"
-        description="Official university identification card"
-        icon="🆔"
-        status="Verified"
-        statusColor="green"
-        studentId={student.campusId}
-      />
-      
-      <DocumentCard 
-        title="Student Photo"
-        description="Recent passport-sized photograph"
-        icon="📷"
-        status="Pending"
-        statusColor="yellow"
-      />
-      
-      <DocumentCard 
-        title="Admission Letter"
-        description="University admission documentation"
-        icon="📄"
-        status="Verified"
-        statusColor="green"
-      />
-      
-      <DocumentCard 
-        title="Academic Transcript"
-        description="Current academic performance record"
-        icon="📊"
-        status="Not Uploaded"
-        statusColor="red"
-      />
-      
-      <DocumentCard 
-        title="Medical Records"
-        description="Health and medical information"
-        icon="🏥"
-        status="Not Uploaded"
-        statusColor="red"
-      />
-      
-      <DocumentCard 
-        title="Other Documents"
-        description="Additional supporting documents"
-        icon="📂"
-        status="Not Uploaded"
-        statusColor="red"
-      />
-    </div>
-
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 rounded-2xl p-6">
-      <div className="flex items-start gap-3">
-        <span className="text-xl text-blue-600">💡</span>
-        <div>
-          <h4 className="font-semibold text-blue-800 mb-2">Document Management</h4>
-          <p className="text-blue-700 text-sm">
-            Student documents can be uploaded through the administrative portal or mobile application. 
-            Once uploaded, documents will be available for viewing in this section. Verified documents are marked with a green status.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const DocumentCard = ({ title, description, icon, status, statusColor, studentId }) => {
-  const statusColors = { 
-    green: "bg-green-100 text-green-800 border-green-200",
-    yellow: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    red: "bg-red-100 text-red-800 border-red-200"
-  };
-
-  return (
-    <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 hover:border-blue-400 transition-all duration-300 hover:shadow-lg group">
-      <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-        <span className="text-2xl">{icon}</span>
-      </div>
-      <h4 className="font-semibold text-gray-800 mb-2 text-center">{title}</h4>
-      <p className="text-gray-600 text-sm mb-4 text-center">{description}</p>
-      
-      {studentId && title === "Student ID Card" && (
-        <div className="text-center mb-3">
-          <div className="font-mono text-sm bg-gray-100 px-2 py-1 rounded border">
-            {studentId}
-          </div>
-        </div>
-      )}
-      
-      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border mx-auto block w-fit ${statusColors[statusColor]}`}>
-        {status}
-      </div>
-    </div>
-  );
-};
-
-// Enhanced Helper component for info rows
+// Helper component for info rows
 const InfoRow = ({ label, value }) => (
   <div className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 px-2 rounded transition-colors">
-    <span className="text-gray-600 font-medium flex items-center gap-2">
-      {label}
-    </span>
+    <span className="text-gray-600 font-medium">{label}</span>
     <span className="text-gray-800 text-right font-semibold max-w-[60%] text-sm bg-white px-3 py-1 rounded border">
       {value}
     </span>

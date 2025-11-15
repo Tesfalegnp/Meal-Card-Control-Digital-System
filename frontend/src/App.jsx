@@ -57,7 +57,6 @@ export default function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to={`/dashboard/${user.role}`} />} />
-        <Route path="/register" element={!user ? <Register /> : <Navigate to={`/dashboard/${user.role}`} />} />
         <Route path="/verify" element={!user ? <Verify /> : <Navigate to={`/dashboard/${user.role}`} />} />
 
         {/* Protected Routes */}
@@ -65,25 +64,27 @@ export default function App() {
         <Route path="/dashboard/cafeManager" element={user ? <Layout user={user} onLogout={handleLogout}><CafeManagerDashboard /></Layout> : <Navigate to="/login" />} />
         
         {/* Student Management */}
+        <Route path="/register" element={user ? <Layout user={user} onLogout={handleLogout}><Register /></Layout> : <Navigate to="/login" />} />
         <Route path="/daily-status" element={user ? <Layout user={user} onLogout={handleLogout}><DailyStatus /></Layout> : <Navigate to="/login" />} />
         <Route path="/verif" element={user ? <Layout user={user} onLogout={handleLogout}><Verify /></Layout> : <Navigate to="/login" />} />
         <Route path="/deny-management" element={user ? <Layout user={user} onLogout={handleLogout}><DenyManagement /></Layout> : <Navigate to="/login" />} />
-        <Route path="/student-view" element={user ? <Layout user={user} onLogout={handleLogout}><StudentView /></Layout> : <Navigate to="/login" />} />
+        {/* Fixed StudentView route with parameter */}
+        <Route path="/student-view/:campusId" element={user ? <Layout user={user} onLogout={handleLogout}><StudentView /></Layout> : <Navigate to="/login" />} />
         <Route path="/students" element={user ? <Layout user={user} onLogout={handleLogout}><Students /></Layout> : <Navigate to="/login" />} />
-        <Route path="/update-student" element={user ? <Layout user={user} onLogout={handleLogout}><UpdateStudent /></Layout> : <Navigate to="/login" />} />
+        <Route path="/update-student/:id" element={user ? <Layout user={user} onLogout={handleLogout}><UpdateStudent /></Layout> : <Navigate to="/login" />} />
         <Route path="/cafe-students-view" element={user ? <Layout user={user} onLogout={handleLogout}><CafeStudentsView /></Layout> : <Navigate to="/login" />} />
         
         {/* Store Management */}
         <Route path="/stock-register" element={user ? <Layout user={user} onLogout={handleLogout}><StockRegister /></Layout> : <Navigate to="/login" />} />
         <Route path="/stock-remain" element={user ? <Layout user={user} onLogout={handleLogout}><StockRemain /></Layout> : <Navigate to="/login" />} />
         <Route path="/inventory" element={user ? <Layout user={user} onLogout={handleLogout}><InventoryManagement /></Layout> : <Navigate to="/login" />} />
-        <Route path="/supplier" element={user ? <Layout user={user} onLogout={handleLogout}><SupplierManagement /></Layout> : <Navigate to="/login" />} />
+        <Route path="/supplier-management" element={user ? <Layout user={user} onLogout={handleLogout}><SupplierManagement /></Layout> : <Navigate to="/login" />} />
         
         {/* Other Features */}
         <Route path="/qr-print" element={user ? <Layout user={user} onLogout={handleLogout}><QrPrint /></Layout> : <Navigate to="/login" />} />
         <Route path="/settings" element={user ? <Layout user={user} onLogout={handleLogout}><Settings /></Layout> : <Navigate to="/login" />} />
         <Route path="/complaints" element={user ? <Layout user={user} onLogout={handleLogout}><Complaints /></Layout> : <Navigate to="/login" />} />
-        <Route path="/weekly_menu" element={user ? <Layout user={user} onLogout={handleLogout}><WeeklyMenu /></Layout> : <Navigate to="/login" />} />
+        <Route path="/weekly-menu" element={user ? <Layout user={user} onLogout={handleLogout}><WeeklyMenu /></Layout> : <Navigate to="/login" />} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to={user ? `/dashboard/${user.role}` : "/login"} />} />

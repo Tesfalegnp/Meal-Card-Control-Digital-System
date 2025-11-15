@@ -1,6 +1,7 @@
 // src/pages/store/InventoryManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase_connect';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const InventoryManagement = () => {
   const [inventory, setInventory] = useState([]);
@@ -13,17 +14,33 @@ const InventoryManagement = () => {
     consumption_per_student: '',
     category: 'grains',
     supplier: '',
-    unit_price: '',
+    storage_condition: 'room_temp',
     min_stock_level: '',
-    storage_condition: 'room_temp'
+    notification_emails: ''
   });
   const [categories, setCategories] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [studentsCount, setStudentsCount] = useState(0);
 
   useEffect(() => {
     fetchInventory();
     fetchCategories();
+    fetchStudentsCount();
   }, []);
+
+  const fetchStudentsCount = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('students')
+        .select('student_id', { count: 'exact' });
+      
+      if (!error && data) {
+        setStudentsCount(data.length || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching students count:', error);
+    }
+  };
 
   const fetchInventory = async () => {
     try {
@@ -33,7 +50,6 @@ const InventoryManagement = () => {
         .select('*')
         .order('food_item');
 
-      // Apply status filter
       if (filter !== 'all') {
         query = query.eq('status', filter);
       }
@@ -64,6 +80,13 @@ const InventoryManagement = () => {
     }
   };
 
+  const calculatePredictedDays = (item) => {
+    if (!item.consumption_per_student || studentsCount === 0) return 0;
+    
+    const dailyConsumption = item.consumption_per_student * studentsCount * 3;
+    return dailyConsumption > 0 ? Math.floor(item.current_stock / dailyConsumption) : 0;
+  };
+
   const handleEdit = (item) => {
     setEditingItem(item.id);
     setEditForm({
@@ -73,14 +96,18 @@ const InventoryManagement = () => {
       consumption_per_student: item.consumption_per_student,
       category: item.category,
       supplier: item.supplier || '',
-      unit_price: item.unit_price || '',
+      storage_condition: item.storage_condition,
       min_stock_level: item.min_stock_level || '',
-      storage_condition: item.storage_condition
+      notification_emails: item.notification_emails ? item.notification_emails.join(', ') : ''
     });
   };
 
   const handleUpdate = async (itemId) => {
     try {
+      const notificationEmails = editForm.notification_emails
+        ? editForm.notification_emails.split(',').map(email => email.trim()).filter(email => email)
+        : [];
+
       const { error } = await supabase
         .from('food_inventory')
         .update({
@@ -90,32 +117,14 @@ const InventoryManagement = () => {
           consumption_per_student: parseFloat(editForm.consumption_per_student),
           category: editForm.category,
           supplier: editForm.supplier || null,
-          unit_price: editForm.unit_price ? parseFloat(editForm.unit_price) : null,
           min_stock_level: editForm.min_stock_level ? parseFloat(editForm.min_stock_level) : 0,
           storage_condition: editForm.storage_condition,
+          notification_emails: notificationEmails,
           updated_at: new Date().toISOString()
         })
         .eq('id', itemId);
 
       if (error) throw error;
-
-      // If stock level changed, add a transaction record
-      const originalItem = inventory.find(item => item.id === itemId);
-      if (originalItem && originalItem.current_stock !== parseFloat(editForm.current_stock)) {
-        const stockDifference = parseFloat(editForm.current_stock) - originalItem.current_stock;
-        const { error: transactionError } = await supabase
-          .from('stock_transactions')
-          .insert([{
-            food_item_id: itemId,
-            transaction_type: stockDifference > 0 ? 'in' : 'out',
-            quantity: Math.abs(stockDifference),
-            unit_price: editForm.unit_price ? parseFloat(editForm.unit_price) : null,
-            total_value: editForm.unit_price ? (parseFloat(editForm.unit_price) * Math.abs(stockDifference)) : null,
-            notes: `Stock adjustment through inventory management`
-          }]);
-
-        if (transactionError) throw transactionError;
-      }
 
       setEditingItem(null);
       fetchInventory();
@@ -175,47 +184,63 @@ const InventoryManagement = () => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      active: { color: 'bg-green-100 text-green-800', label: 'Active' },
-      inactive: { color: 'bg-gray-100 text-gray-800', label: 'Inactive' },
-      depleted: { color: 'bg-red-100 text-red-800', label: 'Depleted' }
+      active: { color: 'from-green-500 to-green-600', label: 'Active' },
+      inactive: { color: 'from-gray-500 to-gray-600', label: 'Inactive' },
+      depleted: { color: 'from-red-500 to-red-600', label: 'Depleted' }
     };
     
     const config = statusConfig[status] || statusConfig.active;
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r ${config.color} shadow-lg`}>
         {config.label}
       </span>
     );
   };
 
-  const getStorageConditionLabel = (condition) => {
-    const labels = {
-      room_temp: 'Room Temperature',
-      refrigerated: 'Refrigerated',
-      frozen: 'Frozen',
-      dry: 'Dry Storage'
-    };
-    return labels[condition] || condition;
+  const getStockStatus = (item) => {
+    const predictedDays = calculatePredictedDays(item);
+    
+    if (item.current_stock <= (item.min_stock_level || 0)) {
+      return { color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' };
+    } else if (predictedDays <= 7) {
+      return { color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' };
+    } else {
+      return { color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' };
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full"
+        ></motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Inventory Management</h1>
-          <p className="text-gray-600">Manage all food items in your inventory</p>
-        </div>
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="mb-8 text-center"
+        >
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+            Inventory Management
+          </h1>
+          <p className="text-gray-600 text-lg">Manage all food items in your inventory</p>
+        </motion.div>
 
         {/* Filters and Controls */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-xl p-6 mb-6 border border-gray-100"
+        >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center space-x-4">
               <select
@@ -224,7 +249,7 @@ const InventoryManagement = () => {
                   setFilter(e.target.value);
                   fetchInventory();
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200"
               >
                 <option value="all">All Items</option>
                 <option value="active">Active</option>
@@ -235,245 +260,201 @@ const InventoryManagement = () => {
                 {inventory.length} items found
               </span>
             </div>
-            <button
+            <motion.button
               onClick={fetchInventory}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-6 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg hover:from-green-600 hover:to-blue-600 shadow-lg transition-all duration-200"
             >
               Refresh
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100"
+        >
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Food Item
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Current Stock
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Consumption/Student
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Days Left
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Category
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Storage
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Min Stock
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {inventory.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingItem === item.id ? (
-                        <input
-                          type="text"
-                          name="food_item"
-                          value={editForm.food_item}
-                          onChange={handleInputChange}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                        />
-                      ) : (
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{item.food_item}</div>
-                          {item.supplier && (
-                            <div className="text-xs text-gray-500">Supplier: {item.supplier}</div>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingItem === item.id ? (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="number"
-                            step="0.01"
-                            name="current_stock"
-                            value={editForm.current_stock}
-                            onChange={handleInputChange}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                          <select
-                            name="unit"
-                            value={editForm.unit}
-                            onChange={handleInputChange}
-                            className="w-20 px-1 py-1 border border-gray-300 rounded text-sm"
-                          >
-                            <option value="kg">kg</option>
-                            <option value="g">g</option>
-                            <option value="l">l</option>
-                            <option value="ml">ml</option>
-                            <option value="piece">piece</option>
-                          </select>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-900">
-                          {item.current_stock} {item.unit}
-                          {item.unit_price && (
-                            <div className="text-xs text-gray-500">
-                              {item.unit_price} Birr/{item.unit}
+                <AnimatePresence>
+                  {inventory.map((item) => {
+                    const predictedDays = calculatePredictedDays(item);
+                    const stockStatus = getStockStatus(item);
+                    
+                    return (
+                      <motion.tr
+                        key={item.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="hover:bg-gray-50 transition-colors duration-200"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {editingItem === item.id ? (
+                            <input
+                              type="text"
+                              name="food_item"
+                              value={editForm.food_item}
+                              onChange={handleInputChange}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition-all duration-200"
+                            />
+                          ) : (
+                            <div>
+                              <div className="text-sm font-semibold text-gray-900">{item.food_item}</div>
+                              {item.supplier && (
+                                <div className="text-xs text-gray-500">Supplier: {item.supplier}</div>
+                              )}
                             </div>
                           )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingItem === item.id ? (
-                        <input
-                          type="number"
-                          step="0.001"
-                          name="consumption_per_student"
-                          value={editForm.consumption_per_student}
-                          onChange={handleInputChange}
-                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                        />
-                      ) : (
-                        <div className="text-sm text-gray-900">
-                          {item.consumption_per_student} {item.unit}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {editingItem === item.id ? (
-                        <select
-                          name="category"
-                          value={editForm.category}
-                          onChange={handleInputChange}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                        >
-                          {categories.map(cat => (
-                            <option key={cat.category_code} value={cat.category_code}>
-                              {cat.category_name}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <div className="text-sm text-gray-500 capitalize">
-                          {item.category}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {editingItem === item.id ? (
-                        <select
-                          name="storage_condition"
-                          value={editForm.storage_condition}
-                          onChange={handleInputChange}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                        >
-                          <option value="room_temp">Room Temp</option>
-                          <option value="refrigerated">Refrigerated</option>
-                          <option value="frozen">Frozen</option>
-                          <option value="dry">Dry Storage</option>
-                        </select>
-                      ) : (
-                        getStorageConditionLabel(item.storage_condition)
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {editingItem === item.id ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          name="min_stock_level"
-                          value={editForm.min_stock_level}
-                          onChange={handleInputChange}
-                          className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                        />
-                      ) : (
-                        item.min_stock_level || '0'
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(item.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {editingItem === item.id ? (
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleUpdate(item.id)}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingItem(null)}
-                            className="text-gray-600 hover:text-gray-900"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleEdit(item)}
-                              className="text-blue-600 hover:text-blue-900 text-xs"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              className="text-red-600 hover:text-red-900 text-xs"
-                            >
-                              Delete
-                            </button>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {editingItem === item.id ? (
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                name="current_stock"
+                                value={editForm.current_stock}
+                                onChange={handleInputChange}
+                                className="w-20 px-2 py-1 border border-gray-300 rounded-lg text-sm transition-all duration-200"
+                              />
+                              <select
+                                name="unit"
+                                value={editForm.unit}
+                                onChange={handleInputChange}
+                                className="w-20 px-1 py-1 border border-gray-300 rounded-lg text-sm transition-all duration-200"
+                              >
+                                <option value="kg">kg</option>
+                                <option value="g">g</option>
+                                <option value="l">l</option>
+                                <option value="ml">ml</option>
+                                <option value="piece">piece</option>
+                              </select>
+                            </div>
+                          ) : (
+                            <div className={`text-sm font-bold ${stockStatus.color} px-3 py-1 rounded-lg ${stockStatus.bg} border ${stockStatus.border}`}>
+                              {item.current_stock} {item.unit}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`text-sm font-bold ${
+                            predictedDays <= 3 ? 'text-red-600' : 
+                            predictedDays <= 7 ? 'text-orange-600' : 'text-green-600'
+                          }`}>
+                            {predictedDays} days
                           </div>
-                          <div className="flex space-x-1">
-                            {item.status !== 'active' && (
-                              <button
-                                onClick={() => handleStatusChange(item.id, 'active')}
-                                className="text-green-600 hover:text-green-900 text-xs"
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {editingItem === item.id ? (
+                            <select
+                              name="category"
+                              value={editForm.category}
+                              onChange={handleInputChange}
+                              className="w-full px-2 py-1 border border-gray-300 rounded-lg text-sm transition-all duration-200"
+                            >
+                              {categories.map(cat => (
+                                <option key={cat.category_code} value={cat.category_code}>
+                                  {cat.category_name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="text-sm text-gray-500 capitalize">
+                              {item.category}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(item.status)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {editingItem === item.id ? (
+                            <div className="flex space-x-2">
+                              <motion.button
+                                onClick={() => handleUpdate(item.id)}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200"
                               >
-                                Activate
-                              </button>
-                            )}
-                            {item.status !== 'inactive' && (
-                              <button
-                                onClick={() => handleStatusChange(item.id, 'inactive')}
-                                className="text-yellow-600 hover:text-yellow-900 text-xs"
+                                Save
+                              </motion.button>
+                              <motion.button
+                                onClick={() => setEditingItem(null)}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="px-3 py-1 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200"
                               >
-                                Deactivate
-                              </button>
-                            )}
-                            {item.status !== 'depleted' && (
-                              <button
-                                onClick={() => handleStatusChange(item.id, 'depleted')}
-                                className="text-red-600 hover:text-red-900 text-xs"
-                              >
-                                Mark Depleted
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                                Cancel
+                              </motion.button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex space-x-2">
+                                <motion.button
+                                  onClick={() => handleEdit(item)}
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  className="text-blue-600 hover:text-blue-800 text-xs font-semibold transition-colors duration-200"
+                                >
+                                  Edit
+                                </motion.button>
+                                <motion.button
+                                  onClick={() => handleDelete(item.id)}
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  className="text-red-600 hover:text-red-800 text-xs font-semibold transition-colors duration-200"
+                                >
+                                  Delete
+                                </motion.button>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
               </tbody>
             </table>
           </div>
 
           {inventory.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No inventory items found</p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-12"
+            >
+              <div className="text-6xl mb-4">📦</div>
+              <p className="text-gray-500 text-lg">No inventory items found</p>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );

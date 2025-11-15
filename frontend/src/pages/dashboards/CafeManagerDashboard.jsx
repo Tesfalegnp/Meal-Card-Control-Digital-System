@@ -89,10 +89,10 @@ const CafeManagerDashboard = () => {
         ]);
 
         setPopularItems([
-          { id: 1, name: 'Chicken Biryani', orders: 156, trend: 'up', rating: 4.8 },
-          { id: 2, name: 'Vegetable Pasta', orders: 142, trend: 'up', rating: 4.6 },
-          { id: 3, name: 'Beef Burger', orders: 128, trend: 'down', rating: 4.4 },
-          { id: 4, name: 'Fruit Salad', orders: 115, trend: 'up', rating: 4.9 }
+          { id: 1, name: 'Shuro-Wote, Alicha + Injera',  trend: 'up', rating: 4.8 },
+          { id: 2, name: 'Rize + Dabo ',  trend: 'up', rating: 4.6 },
+          { id: 3, name: 'Frifer + Dabo',  trend: 'down', rating: 4.4 },
+          { id: 4, name: 'Misir-Kiki, Alicha + Injera ', trend: 'up', rating: 4.9 }
         ]);
 
         setUpcomingEvents([
@@ -322,58 +322,6 @@ const CafeManagerDashboard = () => {
         </div>
       </div>
 
-      {/* Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-        <StatCard
-          title="Today's Meals"
-          value={stats.todayMeals}
-          change={12}
-          icon={<FaUtensils />}
-          color="from-orange-500 to-red-500"
-          onClick={() => navigate('/daily-status')}
-        />
-        <StatCard
-          title="Weekly Revenue"
-          value={`$${stats.weeklyRevenue.toLocaleString()}`}
-          change={8}
-          icon={<FaMoneyBillWave />}
-          color="from-green-500 to-emerald-500"
-          onClick={() => navigate('/analytics')}
-        />
-        <StatCard
-          title="Active Students"
-          value={stats.activeStudents.toLocaleString()}
-          change={5}
-          icon={<FaUsers />}
-          color="from-blue-500 to-cyan-500"
-          onClick={() => navigate('/students')}
-        />
-        <StatCard
-          title="Menu Items"
-          value={stats.menuItems}
-          change={-2}
-          icon={<FaClipboardList />}
-          color="from-purple-500 to-pink-500"
-          onClick={() => navigate('/weekly-menu')}
-        />
-        <StatCard
-          title="Pending Complaints"
-          value={stats.pendingComplaints}
-          change={25}
-          icon={<FaExclamationTriangle />}
-          color="from-yellow-500 to-amber-500"
-          onClick={() => navigate('/complaints')}
-        />
-        <StatCard
-          title="Low Stock Items"
-          value={stats.lowStockItems}
-          change={-10}
-          icon={<FaShoppingCart />}
-          color="from-rose-500 to-pink-500"
-          onClick={() => navigate('/inventory')}
-        />
-      </div>
-
       {/* Quick Actions & Management Features */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
         {/* Quick Actions */}
@@ -395,17 +343,7 @@ const CafeManagerDashboard = () => {
               ))}
             </div>
           </div>
-
-          {/* Management Features */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 mt-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Management Tools</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {managementFeatures.map((feature) => (
-                <FeatureCard key={feature.id} feature={feature} />
-              ))}
-            </div>
-          </div>
-        </div>
+      </div>
 
         {/* Right Sidebar */}
         <div className="space-y-6">
@@ -425,7 +363,6 @@ const CafeManagerDashboard = () => {
                     <div>
                       <h3 className="font-semibold text-gray-800">{item.name}</h3>
                       <div className="flex items-center gap-2">
-                        <p className="text-sm text-gray-600">{item.orders} orders</p>
                         <div className="flex items-center gap-1 text-yellow-500">
                           <FaStar className="text-xs" />
                           <span className="text-xs">{item.rating}</span>
@@ -449,31 +386,15 @@ const CafeManagerDashboard = () => {
               <FaCalendarAlt />
               Upcoming Events
             </h2>
-            <div className="space-y-4">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="bg-white bg-opacity-20 p-4 rounded-xl hover:bg-opacity-30 transition-all">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold">{event.title}</span>
-                    <span className="text-blue-100 text-sm">
-                      {new Date(event.date).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-white bg-opacity-30 px-2 py-1 rounded-full">
-                      {event.type}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Animated Food Icons */}
-            <div className="mt-6 flex justify-center space-x-4">
-              <div className="animate-bounce">🍕</div>
-              <div className="animate-bounce delay-100">🍔</div>
-              <div className="animate-bounce delay-200">🥗</div>
-              <div className="animate-bounce delay-300">🍰</div>
-            </div>
+            <h1>
+              {/* Animated Food Icons */}
+              <div className="mt-6 flex justify-center space-x-4">
+                <div className="animate-bounce">🍕</div>
+                <div className="animate-bounce delay-100">🍔</div>
+                <div className="animate-bounce delay-200">🥗</div>
+                <div className="animate-bounce delay-300">🍰</div>
+              </div>
+            </h1>
           </div>
         </div>
       </div>
@@ -570,7 +491,7 @@ const CafeManagerDashboard = () => {
       <footer className="mt-12 text-center text-gray-600">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm">
-            💫 Powered by Mizan-Tepi University Meal System • {new Date().getFullYear()}
+            💫 Powered by Tesfalegn Petros at Mizan-Tepi University from software engineering Meal System • {new Date().getFullYear()}
           </p>
           <div className="flex gap-4 mt-2 md:mt-0">
             <button 

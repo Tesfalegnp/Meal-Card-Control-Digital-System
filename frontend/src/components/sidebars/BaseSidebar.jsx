@@ -57,6 +57,18 @@ const BaseSidebar = ({
     styleConfig
   } = roleConfig;
 
+  // Function to format path name for display (remove underscores and capitalize)
+  const formatPathName = (path) => {
+    // Extract the last part of the path
+    const pathParts = path.split('/').filter(part => part.length > 0);
+    const lastPart = pathParts[pathParts.length - 1] || '';
+    
+    // Replace underscores with spaces and capitalize each word
+    return lastPart
+      .replace(/_/g, ' ')
+      .replace(/(^\w|\s\w)/g, letter => letter.toUpperCase());
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -126,16 +138,19 @@ const BaseSidebar = ({
                           key={item.path}
                           to={item.path}
                           onClick={handleLinkClick}
-                          className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group ${
+                          className={`flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group no-underline ${
                             isActive(item.path)
                               ? 'bg-white/20 text-white shadow-lg transform scale-105'
                               : 'text-gray-200 hover:bg-white/10 hover:text-white hover:transform hover:scale-105'
                           }`}
+                          style={{ textDecoration: 'none' }}
                         >
                           <span className="text-lg transform group-hover:scale-110 transition-transform">
                             {item.icon}
                           </span>
-                          <span className="font-medium flex-1">{item.label}</span>
+                          <span className="font-medium flex-1" style={{ textDecoration: 'none' }}>
+                            {item.label || formatPathName(item.path)}
+                          </span>
                           {item.badge && (
                             <span className="px-2 py-1 text-xs rounded-full bg-pink-500 animate-pulse">
                               {item.badge}
@@ -153,7 +168,8 @@ const BaseSidebar = ({
                         onLogout();
                         setIsMobileDropdownOpen(false);
                       }}
-                      className="w-full flex items-center space-x-3 p-3 rounded-lg bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105"
+                      className="w-full flex items-center space-x-3 p-3 rounded-lg bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105 no-underline"
+                      style={{ textDecoration: 'none' }}
                     >
                       <span className="text-lg transform hover:scale-110 transition-transform">🚪</span>
                       <span className="font-medium">Logout</span>
@@ -205,10 +221,10 @@ const BaseSidebar = ({
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <h1 className="text-lg font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+                <h1 className="text-lg font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent no-underline">
                   {styleConfig.title}
                 </h1>
-                <p className="text-purple-200 text-xs font-medium">
+                <p className="text-purple-200 text-xs font-medium no-underline">
                   {styleConfig.subtitle}
                 </p>
               </div>
@@ -222,9 +238,10 @@ const BaseSidebar = ({
               p-1.5 rounded-lg transition-all duration-200
               hover:bg-white/10 active:scale-95 transform hover:scale-110
               ${isCollapsed ? 'rotate-180' : ''}
-              flex-shrink-0
+              flex-shrink-0 no-underline
             `}
             title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            style={{ textDecoration: 'none' }}
           >
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
@@ -251,9 +268,9 @@ const BaseSidebar = ({
               <div key={categoryIndex} className="space-y-2">
                 {/* Category Header - Only show when not collapsed */}
                 {!isCollapsed && (
-                  <div className="flex items-center space-x-2 px-2 py-1 text-purple-300 border-l-2 border-purple-500">
+                  <div className="flex items-center space-x-2 px-2 py-1 text-purple-300 border-l-2 border-purple-500 no-underline">
                     <span className="text-sm">{category.icon}</span>
-                    <span className="text-xs font-semibold uppercase tracking-wide">
+                    <span className="text-xs font-semibold uppercase tracking-wide no-underline">
                       {category.name}
                     </span>
                   </div>
@@ -269,13 +286,14 @@ const BaseSidebar = ({
                       onMouseEnter={() => setActiveHover(item.path)}
                       onMouseLeave={() => setActiveHover(null)}
                       className={`
-                        flex items-center p-3 rounded-xl transition-all duration-200 group
+                        flex items-center p-3 rounded-xl transition-all duration-200 group no-underline
                         ${isCollapsed ? 'justify-center' : 'space-x-3'}
                         ${isActive(item.path) 
                           ? `bg-white/20 shadow-lg ${styleConfig.accentShadow} text-white transform scale-105` 
                           : 'text-purple-100 hover:bg-white/10 hover:text-white hover:shadow-md hover:transform hover:scale-105'
                         }
                       `}
+                      style={{ textDecoration: 'none' }}
                     >
                       <span className={`
                         text-lg transition-all duration-200
@@ -284,8 +302,10 @@ const BaseSidebar = ({
                         {item.icon}
                       </span>
                       {!isCollapsed && (
-                        <div className="flex items-center justify-between flex-1">
-                          <span className="font-medium text-sm">{item.label}</span>
+                        <div className="flex items-center justify-between flex-1 no-underline">
+                          <span className="font-medium text-sm no-underline" style={{ textDecoration: 'none' }}>
+                            {item.label || formatPathName(item.path)}
+                          </span>
                           {item.badge && (
                             <span className="px-2 py-1 text-xs rounded-full bg-pink-500 animate-pulse">
                               {item.badge}
@@ -299,10 +319,10 @@ const BaseSidebar = ({
                         <div className={`
                           absolute left-full ml-2 px-3 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-lg
                           opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none
-                          whitespace-nowrap z-50 border border-white/10
+                          whitespace-nowrap z-50 border border-white/10 no-underline
                           ${activeHover === item.path ? 'opacity-100' : 'opacity-0'}
-                        `}>
-                          {item.label}
+                        `} style={{ textDecoration: 'none' }}>
+                          {item.label || formatPathName(item.path)}
                           {item.badge && (
                             <span className="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-pink-500">
                               {item.badge}
@@ -325,28 +345,7 @@ const BaseSidebar = ({
 
         {/* Fixed Bottom Section - Always stays at bottom */}
         <div className="flex-shrink-0 border-t border-white/20 bg-slate-900 bg-opacity-50 backdrop-blur-sm">
-          {/* User Profile Card */}
-          {!isCollapsed && (
-            <div className="p-3 border-b border-white/10">
-              <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/20">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center text-white text-sm font-bold">
-                    {styleConfig.title.includes('Cafe') ? 'CM' : 'SD'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">
-                      {styleConfig.title}
-                    </p>
-                    <p className="text-purple-200 text-xs truncate">
-                      {styleConfig.subtitle}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Logout Button - Fixed at bottom */}
+         {/* Logout Button - Fixed at bottom */}
           <div className="p-3">
             <button 
               onClick={onLogout}
@@ -355,15 +354,18 @@ const BaseSidebar = ({
                 bg-gradient-to-r from-red-600 to-pink-600 
                 hover:from-red-700 hover:to-pink-700
                 transition-all duration-200 transform hover:scale-105
-                active:scale-95 shadow-lg group
+                active:scale-95 shadow-lg group no-underline
                 ${isCollapsed ? 'justify-center' : 'space-x-3'}
               `}
+              style={{ textDecoration: 'none' }}
             >
               <span className="text-lg transform group-hover:scale-110 transition-transform">
                 🚪
               </span>
               {!isCollapsed && (
-                <span className="font-medium text-sm">Logout</span>
+                <span className="font-medium text-sm no-underline" style={{ textDecoration: 'none' }}>
+                  Logout
+                </span>
               )}
             </button>
           </div>
@@ -373,7 +375,7 @@ const BaseSidebar = ({
       {/* Spacer for mobile header */}
       <div className="lg:hidden h-16"></div>
 
-      {/* Custom CSS for animations */}
+      {/* Custom CSS for animations and removing underlines globally */}
       <style jsx>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-10px); }
@@ -381,6 +383,34 @@ const BaseSidebar = ({
         }
         .animate-fadeIn {
           animation: fadeIn 0.2s ease-out;
+        }
+        
+        /* Remove underlines from all sidebar links globally */
+        .sidebar-link, 
+        .sidebar-link:hover, 
+        .sidebar-link:focus,
+        .sidebar-link:active {
+          text-decoration: none !important;
+        }
+      `}</style>
+
+      {/* Additional global style to ensure no underlines */}
+      <style jsx global>{`
+        /* Remove underlines from all Link components in the sidebar */
+        [class*="sidebar"] a,
+        [class*="sidebar"] .no-underline,
+        .no-underline,
+        .no-underline:hover,
+        .no-underline:focus,
+        .no-underline:active {
+          text-decoration: none !important;
+        }
+        
+        /* Ensure React Router Links don't have underlines */
+        a[href]:not(.keep-underline),
+        .sidebar-container a,
+        .sidebar-container .no-underline {
+          text-decoration: none !important;
         }
       `}</style>
     </>
