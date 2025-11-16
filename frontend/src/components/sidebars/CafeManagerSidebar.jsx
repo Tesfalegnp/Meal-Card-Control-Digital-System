@@ -25,7 +25,7 @@ const CafeManagerSidebar = ({ isOpen, onClose, onLogout }) => {
         icon: '🍽️',
         items: [
           { path: '/weekly-menu', label: 'Weekly Menu Planning', icon: '🗓️' },
-          { path: '/verify', label: 'Verify Meals', icon: '✅', badge: 'Scan' },
+          { path: '/verif', label: 'Verify Meals', icon: '✅', badge: 'Scan' },
         ]
       },
       {

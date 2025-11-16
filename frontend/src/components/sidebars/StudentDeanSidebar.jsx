@@ -17,8 +17,6 @@ const StudentDeanSidebar = ({ isOpen, onClose, onLogout }) => {
         icon: '📊',
         items: [
           { path: '/dashboard/studentDean', label: 'Dashboard Overview', icon: '🏠', badge: 'Live' },
-          { path: '/dean-daily-status', label: 'Daily Attendance', icon: '📋' },
-          { path: '/dean-analytics', label: 'Analytics', icon: '📈' },
         ]
       },
       {
@@ -26,39 +24,35 @@ const StudentDeanSidebar = ({ isOpen, onClose, onLogout }) => {
         icon: '👨‍🎓',
         items: [
           { path: '/students', label: 'All Students', icon: '👥', badge: '1.2K' },
-          { path: '/student-registration', label: 'New Registration', icon: '➕' },
-          { path: '/student-profiles', label: 'Student Profiles', icon: '📄' },
-          { path: '/dean-student-view', label: 'Student Search', icon: '🔍' },
-        ]
-      },
-      {
-        name: 'Academic Oversight',
-        icon: '📚',
-        items: [
-          { path: '/academic-performance', label: 'Performance', icon: '📊' },
-          { path: '/attendance-reports', label: 'Attendance', icon: '✅' },
-          { path: '/dean-complaints', label: 'Student Issues', icon: '📝', badge: '8' },
-          { path: '/disciplinary-actions', label: 'Disciplinary', icon: '⚖️' },
+          { path: '/register', label: 'New Registration', icon: '➕' },
         ]
       },
       {
         name: 'Meal Monitoring',
         icon: '🍽️',
         items: [
-          { path: '/dean-meal-status', label: 'Meal Reports', icon: '📋' },
-          { path: '/meal-compliance', label: 'Compliance', icon: '📊' },
-          { path: '/dean-verify', label: 'Verify Students', icon: '✅' },
-          { path: '/meal-exceptions', label: 'Exceptions', icon: '⚠️', badge: '5' },
+          { path: '/daily-status', label: 'Meal Reports', icon: '📋' },
+          { path: '/verify', label: 'Verify Students', icon: '✅' },
+          { path: '/deny-management', label: 'Deny Management', icon: '⚠️', badge: '5' },
         ]
       },
       {
-        name: 'Administration',
+        name: 'Store & Inventory',
+        icon: '📦',
+        items: [
+          { path: '/stock-remain', label: 'Stock Analysis', icon: '📊' },
+          { path: '/inventory', label: 'Inventory Management', icon: '🗃️' },
+          { path: '/supplier-management', label: 'Suppliers', icon: '🤝' },
+        ]
+      },
+      {
+        name: 'System Management',
         icon: '⚙️',
         items: [
-          { path: '/dean-settings', label: 'System Settings', icon: '⚙️' },
-          { path: '/audit-logs', label: 'Audit Logs', icon: '📋', badge: 'New' },
-          { path: '/dean-reports', label: 'Reports', icon: '📑' },
-          { path: '/support', label: 'Support', icon: '🛟' },
+          { path: '/weekly-menu', label: 'Weekly Menu', icon: '📅' },
+          { path: '/complaints', label: 'Complaints', icon: '📝', badge: '8' },
+          { path: '/qr-print', label: 'QR Print', icon: '🖨️' },
+          { path: '/settings', label: 'Settings', icon: '⚙️' },
         ]
       }
     ]

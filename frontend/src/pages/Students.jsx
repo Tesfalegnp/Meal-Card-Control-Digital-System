@@ -195,7 +195,7 @@ export default function Students() {
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
             <div className="flex flex-col md:flex-row gap-4 w-full lg:w-auto">
               {/* 🔍 Search Bar */}
-              <div className="relative flex-1 md:min-w-80">
+              <div className="relative flex-1 md:min-w-50">
                 <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"

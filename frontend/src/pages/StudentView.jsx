@@ -117,24 +117,24 @@ export default function StudentView() {
     }
   }, [campusId]);
 
-  // Password Reset Function
+  // Password Reset Function - Updated with your logic
   const handlePasswordReset = async () => {
-    if (!student || !window.confirm("Are you sure you want to reset this student's password to default?\n\nDefault password will be: 123" + student.lastName?.toLowerCase())) {
+    if (!student || !window.confirm("Are you sure you want to reset this student's password to default?\n\nDefault password will be: 123" + (student.lastName?.toLowerCase() || ''))) {
       return;
     }
 
     try {
       setResettingPassword(true);
       
-      // Generate default password: "123+last_name"
-      const defaultPassword = `123${student.lastName}`.toLowerCase();
+      // Generate default password: "123+last_name" (your logic)
+      const defaultPassword = `123${student.lastName || ''}`.toLowerCase();
       
-      // Update student password in database
+      // Update student password in database - without updated_at field
       const { error } = await supabase
         .from('students')
         .update({ 
-          password: defaultPassword,
-          updated_at: new Date().toISOString()
+          password: defaultPassword
+          // Removed updated_at since it doesn't exist in students table
         })
         .eq('student_id', campusId);
 
@@ -696,7 +696,7 @@ const SecurityTab = ({ student, onPasswordReset, resettingPassword, passwordRese
                 123 + last_name (lowercase)
               </code>
               <p className="text-xs text-gray-500 mt-2 text-center">
-                Example for {student.lastName}: <code className="bg-gray-100 px-2 py-1 rounded font-mono">123{student.lastName?.toLowerCase()}</code>
+                Example for {student.lastName || 'student'}: <code className="bg-gray-100 px-2 py-1 rounded font-mono">123{(student.lastName || 'student').toLowerCase()}</code>
               </p>
             </div>
 
@@ -707,7 +707,7 @@ const SecurityTab = ({ student, onPasswordReset, resettingPassword, passwordRese
                   <span className="font-medium">Password reset successfully!</span>
                 </div>
                 <p className="text-sm">
-                  New password has been set to: <code className="bg-green-200 px-2 py-1 rounded font-mono">123{student.lastName?.toLowerCase()}</code>
+                  New password has been set to: <code className="bg-green-200 px-2 py-1 rounded font-mono">123{(student.lastName || '').toLowerCase()}</code>
                 </p>
                 <p className="text-xs mt-2 text-green-700">
                   The student should change their password after next login for security.
