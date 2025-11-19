@@ -22,6 +22,9 @@ import StockRemain from './pages/store/StockRemain';
 import InventoryManagement from './pages/store/InventoryManagement';
 import SupplierManagement from './pages/store/SupplierManagement';
 import WeeklyMenu from './pages/WeeklyMenu';
+import RFID from './pages/rfid';
+import CouncilRegistration from './pages/CouncilRegistration';
+import SupplierView from './pages/store/SupplierView';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -73,18 +76,21 @@ export default function App() {
         <Route path="/students" element={user ? <Layout user={user} onLogout={handleLogout}><Students /></Layout> : <Navigate to="/login" />} />
         <Route path="/update-student/:id" element={user ? <Layout user={user} onLogout={handleLogout}><UpdateStudent /></Layout> : <Navigate to="/login" />} />
         <Route path="/cafe-students-view" element={user ? <Layout user={user} onLogout={handleLogout}><CafeStudentsView /></Layout> : <Navigate to="/login" />} />
+        <Route path="/rfid-scan" element={user ? <Layout user={user} onLogout={handleLogout}><RFID /></Layout> : <Navigate to="/login" />} />
         
         {/* Store Management */}
         <Route path="/stock-register" element={user ? <Layout user={user} onLogout={handleLogout}><StockRegister /></Layout> : <Navigate to="/login" />} />
         <Route path="/stock-remain" element={user ? <Layout user={user} onLogout={handleLogout}><StockRemain /></Layout> : <Navigate to="/login" />} />
         <Route path="/inventory" element={user ? <Layout user={user} onLogout={handleLogout}><InventoryManagement /></Layout> : <Navigate to="/login" />} />
         <Route path="/supplier-management" element={user ? <Layout user={user} onLogout={handleLogout}><SupplierManagement /></Layout> : <Navigate to="/login" />} />
+        <Route path="/Supplier_View" element={user ? <Layout user={user} onLogout={handleLogout}><SupplierView /></Layout> : <Navigate to="/login" />} />
         
         {/* Other Features */}
         <Route path="/qr-print" element={user ? <Layout user={user} onLogout={handleLogout}><QrPrint /></Layout> : <Navigate to="/login" />} />
         <Route path="/settings" element={user ? <Layout user={user} onLogout={handleLogout}><Settings /></Layout> : <Navigate to="/login" />} />
         <Route path="/complaints" element={user ? <Layout user={user} onLogout={handleLogout}><Complaints /></Layout> : <Navigate to="/login" />} />
         <Route path="/weekly-menu" element={user ? <Layout user={user} onLogout={handleLogout}><WeeklyMenu /></Layout> : <Navigate to="/login" />} />
+        <Route path="/Council_Registration" element={user ? <Layout user={user} onLogout={handleLogout}><CouncilRegistration /></Layout> : <Navigate to="/login" />} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to={user ? `/dashboard/${user.role}` : "/login"} />} />

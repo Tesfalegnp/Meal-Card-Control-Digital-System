@@ -25,6 +25,8 @@ const StudentDeanSidebar = ({ isOpen, onClose, onLogout }) => {
         items: [
           { path: '/students', label: 'All Students', icon: '👥', badge: '1.2K' },
           { path: '/register', label: 'New Registration', icon: '➕' },
+          { path: '/Council_Registration', label: 'Student Council Management', icon: '📝' },
+
         ]
       },
       {

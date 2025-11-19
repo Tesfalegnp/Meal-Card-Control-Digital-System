@@ -25,17 +25,37 @@ const StockRegister = () => {
   const [categories, setCategories] = useState([]);
   const [studentsCount, setStudentsCount] = useState(0);
   const [predictedDays, setPredictedDays] = useState(0);
+  const [hasApprovalColumns, setHasApprovalColumns] = useState(true); // Assume approval columns exist
 
-  // Common food items by category
+  // Ethiopian common food items by category
   const commonFoodItems = {
-    grains: ['Rice', 'Wheat', 'Teff', 'Barley', 'Maize', 'Sorghum', 'Pasta', 'Bread', 'Injera'],
-    vegetables: ['Onion', 'Potato', 'Tomato', 'Cabbage', 'Carrot', 'Garlic', 'Ginger', 'Green Pepper', 'Lettuce'],
-    proteins: ['Beef', 'Chicken', 'Fish', 'Eggs', 'Lentils', 'Chickpeas', 'Beans', 'Split Peas'],
-    oils: ['Cooking Oil', 'Butter', 'Palm Oil', 'Sunflower Oil', 'Olive Oil'],
-    dairy: ['Milk', 'Yogurt', 'Cheese', 'Cream', 'Butter Milk'],
-    fruits: ['Banana', 'Orange', 'Apple', 'Avocado', 'Mango', 'Pineapple'],
-    spices: ['Salt', 'Sugar', 'Black Pepper', 'Turmeric', 'Berbere', 'Mitmita', 'Cumin', 'Coriander'],
-    other: ['Coffee', 'Tea', 'Sugar', 'Honey', 'Vinegar', 'Soy Sauce']
+    grains: [
+      'ሩዝ (Rice)', 'ፋስታ (Pasta)', 'ጤፍ (Teff)', 'ስንዴ (Wheat)', 
+      'ዳጉሳ (Barley)', 'ባቄላ (Sorghum)', 'እንጀራ (Injera)', 'ዳቦ (Bread)'
+    ],
+    vegetables: [
+      'ድንች (Potato)', 'ሽንኩርት (Onion)', 'ቲማቲም (Tomato)', 
+      'ካሮት (Carrot)', 'ሙሉጌታ (Cabbage)', 'ነጭ ሽንኩርት (Garlic)',
+      'ጅንጅብል (Ginger)', 'አደንድ (Green Pepper)', 'ሰላጣ (Lettuce)'
+    ],
+    proteins: [
+      'ምስር ድፍን (Lentils)', 'ምስር ክክ (Chickpeas)', 'ሽሮ (Chickpeas)', 
+      'በቀለ (Beans)', 'ወተት (Milk)', 'እንቁላል (Eggs)',
+      'ዶሮ (Chicken)', 'በግ (Beef)', 'አሳ (Fish)'
+    ],
+    oils: [
+      'ዘይት (Cooking Oil)', 'ቅቤ (Butter)', 'ነጭ ቅቤ (Ghee)'
+    ],
+    spices: [
+      'ጨው (Salt)', 'ሰንዴ (Sugar)', 'በርበሬ (Pepper)', 
+      'አይርስ (Turmeric)', 'ጨጓራ (Cumin)', 'ድምጥ (Coriander)'
+    ],
+    beverages: [
+      'ቡና (Coffee)', 'ሻይ (Tea)', 'ሻይ ቅጠል (Tea Leaves)'
+    ],
+    other: [
+      'ኤርድ (Yeast)', 'ማር (Honey)', 'ቃንድ (Vinegar)'
+    ]
   };
 
   useEffect(() => {
@@ -119,7 +139,7 @@ const StockRegister = () => {
 
     const quantity = parseFloat(formData.quantity);
     const consumptionPerStudent = parseFloat(formData.consumption_per_student);
-    const dailyConsumption = consumptionPerStudent * studentsCount * 3; // 3 meals per day
+    const dailyConsumption = consumptionPerStudent * studentsCount * 3;
     
     if (dailyConsumption > 0) {
       const days = Math.floor(quantity / dailyConsumption);
@@ -136,7 +156,7 @@ const StockRegister = () => {
     try {
       const foodItem = showCustomInput ? formData.custom_food_item : formData.food_item;
       
-      if (!foodItem || !formData.quantity || !formData.consumption_per_student) {
+      if (!foodItem || !formData.quantity) {
         alert('Please fill in all required fields');
         return;
       }
@@ -146,46 +166,72 @@ const StockRegister = () => {
         ? formData.notification_emails.split(',').map(email => email.trim()).filter(email => email)
         : [];
 
-      // Insert into food inventory
-      const { data, error } = await supabase
-        .from('food_inventory')
-        .insert([{
-          food_item: foodItem,
-          quantity: parseFloat(formData.quantity),
-          unit: formData.unit,
-          consumption_per_student: parseFloat(formData.consumption_per_student),
-          category: formData.category,
-          supplier: formData.supplier || null,
-          batch_number: formData.batch_number || null,
-          storage_condition: formData.storage_condition,
-          current_stock: parseFloat(formData.quantity),
-          min_stock_level: formData.min_stock_level ? parseFloat(formData.min_stock_level) : 0,
-          notification_emails: notificationEmails,
-          status: 'active'
-        }])
-        .select();
-
-      if (error) throw error;
-
-      // Add stock transaction
-      const transactionData = {
-        food_item_id: data[0].id,
-        transaction_type: 'in',
+      // Base data without foreign key dependencies
+      const baseData = {
+        food_item: foodItem,
         quantity: parseFloat(formData.quantity),
-        notes: `Initial stock registration for ${foodItem}`
+        unit: formData.unit,
+        consumption_per_student: parseFloat(formData.consumption_per_student) || 0.1,
+        category: formData.category,
+        supplier: formData.supplier || null,
+        batch_number: formData.batch_number || null,
+        storage_condition: formData.storage_condition,
+        current_stock: parseFloat(formData.quantity),
+        min_stock_level: formData.min_stock_level ? parseFloat(formData.min_stock_level) : parseFloat(formData.quantity) * 0.1,
+        notification_emails: notificationEmails,
+        status: 'active'
       };
-      
-      if (formData.batch_number) {
-        transactionData.batch_number = formData.batch_number;
+
+      let insertData = baseData;
+
+      // Try to add approval columns if they exist
+      try {
+        // First attempt with approval workflow
+        const approvalData = {
+          ...baseData,
+          approved_by_committee: false,
+          approved_by_president: false,
+          registered_by: 'cafeteria_manager' // Simple string, no foreign key
+        };
+
+        const { data, error } = await supabase
+          .from('food_inventory')
+          .insert([approvalData])
+          .select();
+
+        if (error) {
+          // If approval columns don't exist, fall back to base data
+          if (error.code === '42703') {
+            console.log('Approval columns not found, using basic insert');
+            const { data: retryData, error: retryError } = await supabase
+              .from('food_inventory')
+              .insert([baseData])
+              .select();
+
+            if (retryError) throw retryError;
+            
+            alert('✅ Stock registered successfully!');
+            setHasApprovalColumns(false);
+          } else {
+            throw error;
+          }
+        } else {
+          alert('✅ Stock registered successfully! It has been sent to Cafeteria Committee for approval in the mobile app.');
+        }
+      } catch (error) {
+        console.error('Error in approval workflow attempt:', error);
+        
+        // Final fallback - try basic insert
+        const { data, error: finalError } = await supabase
+          .from('food_inventory')
+          .insert([baseData])
+          .select();
+
+        if (finalError) throw finalError;
+        
+        alert('✅ Stock registered successfully!');
+        setHasApprovalColumns(false);
       }
-
-      const { error: transactionError } = await supabase
-        .from('stock_transactions')
-        .insert([transactionData]);
-
-      if (transactionError) throw transactionError;
-
-      alert('Stock registered successfully!');
       
       // Reset form
       setFormData({
@@ -208,7 +254,17 @@ const StockRegister = () => {
 
     } catch (error) {
       console.error('Error registering stock:', error);
-      alert('Error registering stock: ' + error.message);
+      
+      // More specific error handling
+      if (error.code === '23503') { // Foreign key violation
+        alert('Error: Registration failed due to database constraint. Please check supplier information.');
+      } else if (error.code === '42703') { // Column doesn't exist
+        alert('Error: Database schema issue. Using basic registration mode.');
+      } else if (error.message.includes('JWT')) {
+        alert('Error: Authentication issue. Please refresh the page.');
+      } else {
+        alert('Error registering stock: ' + error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -279,6 +335,56 @@ const StockRegister = () => {
             Register New Stock
           </h1>
           <p className="text-gray-600 text-lg">Add food items to inventory with consumption tracking</p>
+          
+          {/* User Info */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-4 bg-white rounded-xl p-4 max-w-md mx-auto shadow-md border border-gray-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">
+                  Registered by: Cafeteria Manager
+                </p>
+                <p className="text-xs text-gray-500">System Access: Inventory Management</p>
+                <p className="text-xs text-green-600 font-medium">
+                  {hasApprovalColumns ? '✓ Approval workflow enabled' : '⚠ Basic registration mode'}
+                </p>
+              </div>
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            </div>
+          </motion.div>
+          
+          {/* Approval Workflow Info */}
+          {hasApprovalColumns && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mt-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 max-w-2xl mx-auto"
+            >
+              <div className="flex items-center justify-center mb-2">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                <h3 className="font-semibold text-yellow-800">Approval Workflow Active</h3>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs text-yellow-700">
+                <div className="text-center">
+                  <div className="font-semibold">Step 1</div>
+                  <div>You Register (Web)</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold">Step 2</div>
+                  <div>Committee Reviews (Mobile)</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-semibold">Step 3</div>
+                  <div>President Approves (Mobile)</div>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
         <motion.div
@@ -319,7 +425,7 @@ const StockRegister = () => {
                       </div>
 
                       {/* Food Items Grid */}
-                      <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
+                      <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
                         {getCategoryItems().map((item) => (
                           <motion.button
                             key={item}
@@ -386,7 +492,7 @@ const StockRegister = () => {
                       required
                       min="0"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200"
-                      placeholder="e.g., 2000"
+                      placeholder="e.g., 1000"
                     />
                   </div>
 
@@ -405,6 +511,7 @@ const StockRegister = () => {
                       <option value="l">Liter (l)</option>
                       <option value="ml">Milliliter (ml)</option>
                       <option value="piece">Piece</option>
+                      <option value="sack">Sack</option>
                     </select>
                   </div>
                 </div>
@@ -561,7 +668,7 @@ const StockRegister = () => {
                       Registering Stock...
                     </div>
                   ) : (
-                    'Register Stock'
+                    `Register Stock ${hasApprovalColumns ? '(Approval Required)' : ''}`
                   )}
                 </motion.button>
               </form>
@@ -606,7 +713,7 @@ const StockRegister = () => {
               <ul className="space-y-2 text-sm text-blue-700">
                 <li className="flex items-start">
                   <span className="text-blue-500 mr-2">•</span>
-                  Select from common items or add custom items
+                  Select from common Ethiopian items or add custom items
                 </li>
                 <li className="flex items-start">
                   <span className="text-blue-500 mr-2">•</span>
@@ -620,6 +727,12 @@ const StockRegister = () => {
                   <span className="text-blue-500 mr-2">•</span>
                   Set proper storage conditions for food safety
                 </li>
+                {hasApprovalColumns && (
+                  <li className="flex items-start">
+                    <span className="text-blue-500 mr-2">•</span>
+                    Items require committee and president approval via mobile app
+                  </li>
+                )}
               </ul>
             </div>
 
@@ -627,27 +740,60 @@ const StockRegister = () => {
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-xl p-6 border border-green-200">
               <h3 className="text-lg font-semibold text-green-900 mb-3 flex items-center">
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                Sample Consumption Rates
+                Sample Consumption Rates (per student per meal)
               </h3>
               <div className="text-sm text-green-700 space-y-1">
                 <div className="flex justify-between">
                   <span>Rice/Injera:</span>
-                  <span>0.15 - 0.2 kg/student</span>
+                  <span>0.15 - 0.2 kg</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Vegetables:</span>
-                  <span>0.1 - 0.15 kg/student</span>
+                  <span>0.1 - 0.15 kg</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Cooking Oil:</span>
-                  <span>0.02 - 0.03 L/student</span>
+                  <span>0.02 - 0.03 L</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Meat/Fish:</span>
-                  <span>0.08 - 0.12 kg/student</span>
+                  <span>0.08 - 0.12 kg</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Lentils/Beans:</span>
+                  <span>0.1 - 0.15 kg</span>
                 </div>
               </div>
             </div>
+
+            {/* Approval Status */}
+            {hasApprovalColumns && (
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-xl p-6 border border-purple-200">
+                <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center">
+                  <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                  Approval Workflow Status
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-purple-700">Your Registration (Web)</span>
+                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">Ready</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-purple-700">Committee Review (Mobile)</span>
+                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Pending</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-purple-700">President Approval (Mobile)</span>
+                    <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">Waiting</span>
+                  </div>
+                </div>
+                <div className="mt-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-xs text-blue-700 text-center">
+                    After registration, committee members and presidents will review and approve via mobile app
+                  </p>
+                </div>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       </div>

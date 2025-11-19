@@ -271,7 +271,7 @@ const Verify = () => {
         </div>
 
         <div className="text-center mb-6">
-          <p
+          <p 
             className={`text-lg font-semibold p-4 rounded-xl transition-all duration-300 ${
               status.includes("Verified")
                 ? "bg-green-100 text-green-800 border border-green-300"

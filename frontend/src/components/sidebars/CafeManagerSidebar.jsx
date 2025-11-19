@@ -25,7 +25,8 @@ const CafeManagerSidebar = ({ isOpen, onClose, onLogout }) => {
         icon: '🍽️',
         items: [
           { path: '/weekly-menu', label: 'Weekly Menu Planning', icon: '🗓️' },
-          { path: '/verif', label: 'Verify Meals', icon: '✅', badge: 'Scan' },
+          { path: '/verif', label: 'Verify QR Code', icon: '✅', badge: 'Scan' },
+          { path: '/rfid-scan', label: 'Verify RFID', icon: '✅', badge: 'Scan' },
         ]
       },
       {
@@ -45,7 +46,7 @@ const CafeManagerSidebar = ({ isOpen, onClose, onLogout }) => {
           { path: '/inventory', label: 'Inventory', icon: '📦', badge: '5 Low' },
           { path: '/stock-register', label: 'Stock Register', icon: '📊' },
           { path: '/stock-remain', label: 'Stock Levels', icon: '⚖️' },
-          { path: '/supplier-management', label: 'Suppliers', icon: '🚚' },
+          { path: '/Supplier_View', label: 'Suppliers', icon: '🚚' },
         ]
       },
       {
